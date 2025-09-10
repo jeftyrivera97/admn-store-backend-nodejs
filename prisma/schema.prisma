@@ -1,0 +1,1009 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model areas_empleados {
+  id          BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion String      @db.VarChar(255)
+  id_estado   BigInt?     @db.UnsignedBigInt
+  id_usuario  BigInt?     @db.UnsignedBigInt
+  created_at  DateTime?   @db.Timestamp(0)
+  updated_at  DateTime?   @db.Timestamp(0)
+  deleted_at  DateTime?   @db.Timestamp(0)
+  estados     estados?    @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "areas_empleados_id_estado_foreign")
+  users       users?      @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "areas_empleados_id_usuario_foreign")
+  empleados   empleados[]
+
+  @@index([id_estado], map: "areas_empleados_id_estado_foreign")
+  @@index([id_usuario], map: "areas_empleados_id_usuario_foreign")
+}
+
+model cache {
+  key        String @id @db.VarChar(255)
+  value      String @db.MediumText
+  expiration Int
+}
+
+model cache_locks {
+  key        String @id @db.VarChar(255)
+  owner      String @db.VarChar(255)
+  expiration Int
+}
+
+model cajas {
+  id             BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion    String           @db.VarChar(255)
+  id_estado      BigInt?          @db.UnsignedBigInt
+  id_usuario     BigInt?          @db.UnsignedBigInt
+  created_at     DateTime?        @db.Timestamp(0)
+  updated_at     DateTime?        @db.Timestamp(0)
+  deleted_at     DateTime?        @db.Timestamp(0)
+  estados        estados?         @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_id_estado_foreign")
+  users          users?           @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_id_usuario_foreign")
+  cajas_sesiones cajas_sesiones[]
+
+  @@index([id_estado], map: "cajas_id_estado_foreign")
+  @@index([id_usuario], map: "cajas_id_usuario_foreign")
+}
+
+model cajas_movimientos {
+  id                     BigInt                  @id @default(autoincrement()) @db.UnsignedBigInt
+  fecha                  DateTime                @db.DateTime(0)
+  id_sesion              BigInt?                 @db.UnsignedBigInt
+  id_categoria           BigInt?                 @db.UnsignedBigInt
+  id_medio               BigInt?                 @db.UnsignedBigInt
+  monto                  Float
+  descripcion            String                  @db.VarChar(255)
+  id_estado              BigInt?                 @db.UnsignedBigInt
+  id_usuario             BigInt?                 @db.UnsignedBigInt
+  created_at             DateTime?               @db.Timestamp(0)
+  updated_at             DateTime?               @db.Timestamp(0)
+  deleted_at             DateTime?               @db.Timestamp(0)
+  categorias_movimientos categorias_movimientos? @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_movimientos_id_categoria_foreign")
+  estados                estados?                @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_movimientos_id_estado_foreign")
+  medios_movimientos     medios_movimientos?     @relation(fields: [id_medio], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_movimientos_id_medio_foreign")
+  cajas_sesiones         cajas_sesiones?         @relation(fields: [id_sesion], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_movimientos_id_sesion_foreign")
+  users                  users?                  @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_movimientos_id_usuario_foreign")
+  ventas                 ventas[]
+
+  @@index([id_categoria], map: "cajas_movimientos_id_categoria_foreign")
+  @@index([id_estado], map: "cajas_movimientos_id_estado_foreign")
+  @@index([id_medio], map: "cajas_movimientos_id_medio_foreign")
+  @@index([id_sesion], map: "cajas_movimientos_id_sesion_foreign")
+  @@index([id_usuario], map: "cajas_movimientos_id_usuario_foreign")
+}
+
+model cajas_sesiones {
+  id                                             BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  id_caja                                        BigInt?             @db.UnsignedBigInt
+  caja_efectivo_inicial                          Float
+  caja_efectivo_final                            Float?
+  diferencia                                     Float?
+  fecha_apertura                                 DateTime            @db.DateTime(0)
+  fecha_cierre                                   DateTime?           @db.DateTime(0)
+  venta_efectivo                                 Float
+  venta_tarjeta                                  Float
+  venta_transferencia                            Float
+  venta_pago_link                                Float
+  venta_cheque                                   Float
+  venta_credito                                  Float
+  total_contado                                  Float?
+  id_estado_sesion                               BigInt?             @db.UnsignedBigInt
+  id_estado                                      BigInt?             @db.UnsignedBigInt
+  id_usuario                                     BigInt?             @db.UnsignedBigInt
+  id_usuario_auditor                             BigInt?             @db.UnsignedBigInt
+  created_at                                     DateTime?           @db.Timestamp(0)
+  updated_at                                     DateTime?           @db.Timestamp(0)
+  deleted_at                                     DateTime?           @db.Timestamp(0)
+  cajas_movimientos                              cajas_movimientos[]
+  cajas                                          cajas?              @relation(fields: [id_caja], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_sesiones_id_caja_foreign")
+  estados                                        estados?            @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_sesiones_id_estado_foreign")
+  estados_sesiones                               estados_sesiones?   @relation(fields: [id_estado_sesion], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_sesiones_id_estado_sesion_foreign")
+  users_cajas_sesiones_id_usuario_auditorTousers users?              @relation("cajas_sesiones_id_usuario_auditorTousers", fields: [id_usuario_auditor], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_sesiones_id_usuario_auditor_foreign")
+  users_cajas_sesiones_id_usuarioTousers         users?              @relation("cajas_sesiones_id_usuarioTousers", fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "cajas_sesiones_id_usuario_foreign")
+
+  @@index([id_caja], map: "cajas_sesiones_id_caja_foreign")
+  @@index([id_estado], map: "cajas_sesiones_id_estado_foreign")
+  @@index([id_estado_sesion], map: "cajas_sesiones_id_estado_sesion_foreign")
+  @@index([id_usuario_auditor], map: "cajas_sesiones_id_usuario_auditor_foreign")
+  @@index([id_usuario], map: "cajas_sesiones_id_usuario_foreign")
+}
+
+model categorias_compras {
+  id            BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion   String         @db.VarChar(255)
+  id_tipo       BigInt?        @db.UnsignedBigInt
+  id_estado     BigInt?        @db.UnsignedBigInt
+  id_usuario    BigInt?        @db.UnsignedBigInt
+  created_at    DateTime?      @db.Timestamp(0)
+  updated_at    DateTime?      @db.Timestamp(0)
+  deleted_at    DateTime?      @db.Timestamp(0)
+  estados       estados?       @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_compras_id_estado_foreign")
+  tipos_compras tipos_compras? @relation(fields: [id_tipo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_compras_id_tipo_foreign")
+  users         users?         @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_compras_id_usuario_foreign")
+  compras       compras[]
+
+  @@index([id_estado], map: "categorias_compras_id_estado_foreign")
+  @@index([id_tipo], map: "categorias_compras_id_tipo_foreign")
+  @@index([id_usuario], map: "categorias_compras_id_usuario_foreign")
+}
+
+model categorias_comprobantes {
+  id           BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion  String         @db.VarChar(255)
+  id_estado    BigInt?        @db.UnsignedBigInt
+  id_usuario   BigInt?        @db.UnsignedBigInt
+  created_at   DateTime?      @db.Timestamp(0)
+  updated_at   DateTime?      @db.Timestamp(0)
+  deleted_at   DateTime?      @db.Timestamp(0)
+  estados      estados?       @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_comprobantes_id_estado_foreign")
+  users        users?         @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_comprobantes_id_usuario_foreign")
+  comprobantes comprobantes[]
+
+  @@index([id_estado], map: "categorias_comprobantes_id_estado_foreign")
+  @@index([id_usuario], map: "categorias_comprobantes_id_usuario_foreign")
+}
+
+model categorias_empleados {
+  id          BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion String      @db.VarChar(255)
+  rango       String      @db.VarChar(255)
+  id_estado   BigInt?     @db.UnsignedBigInt
+  id_usuario  BigInt?     @db.UnsignedBigInt
+  created_at  DateTime?   @db.Timestamp(0)
+  updated_at  DateTime?   @db.Timestamp(0)
+  deleted_at  DateTime?   @db.Timestamp(0)
+  estados     estados?    @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_empleados_id_estado_foreign")
+  users       users?      @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_empleados_id_usuario_foreign")
+  empleados   empleados[]
+
+  @@index([id_estado], map: "categorias_empleados_id_estado_foreign")
+  @@index([id_usuario], map: "categorias_empleados_id_usuario_foreign")
+}
+
+model categorias_gastos {
+  id           BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion  String        @db.VarChar(255)
+  id_tipo      BigInt?       @db.UnsignedBigInt
+  id_estado    BigInt?       @db.UnsignedBigInt
+  id_usuario   BigInt?       @db.UnsignedBigInt
+  created_at   DateTime?     @db.Timestamp(0)
+  updated_at   DateTime?     @db.Timestamp(0)
+  deleted_at   DateTime?     @db.Timestamp(0)
+  estados      estados?      @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_gastos_id_estado_foreign")
+  tipos_gastos tipos_gastos? @relation(fields: [id_tipo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_gastos_id_tipo_foreign")
+  users        users?        @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_gastos_id_usuario_foreign")
+  gastos       gastos[]
+
+  @@index([id_estado], map: "categorias_gastos_id_estado_foreign")
+  @@index([id_tipo], map: "categorias_gastos_id_tipo_foreign")
+  @@index([id_usuario], map: "categorias_gastos_id_usuario_foreign")
+}
+
+model categorias_ingresos {
+  id             BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion    String          @db.VarChar(255)
+  id_tipo        BigInt?         @db.UnsignedBigInt
+  id_estado      BigInt?         @db.UnsignedBigInt
+  id_usuario     BigInt?         @db.UnsignedBigInt
+  created_at     DateTime?       @db.Timestamp(0)
+  updated_at     DateTime?       @db.Timestamp(0)
+  deleted_at     DateTime?       @db.Timestamp(0)
+  estados        estados?        @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_ingresos_id_estado_foreign")
+  tipos_ingresos tipos_ingresos? @relation(fields: [id_tipo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_ingresos_id_tipo_foreign")
+  users          users?          @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_ingresos_id_usuario_foreign")
+  ingresos       ingresos[]
+
+  @@index([id_estado], map: "categorias_ingresos_id_estado_foreign")
+  @@index([id_tipo], map: "categorias_ingresos_id_tipo_foreign")
+  @@index([id_usuario], map: "categorias_ingresos_id_usuario_foreign")
+}
+
+model categorias_movimientos {
+  id                BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion       String              @db.VarChar(255)
+  id_estado         BigInt?             @db.UnsignedBigInt
+  id_usuario        BigInt?             @db.UnsignedBigInt
+  created_at        DateTime?           @db.Timestamp(0)
+  updated_at        DateTime?           @db.Timestamp(0)
+  deleted_at        DateTime?           @db.Timestamp(0)
+  cajas_movimientos cajas_movimientos[]
+  estados           estados?            @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_movimientos_id_estado_foreign")
+  users             users?              @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_movimientos_id_usuario_foreign")
+
+  @@index([id_estado], map: "categorias_movimientos_id_estado_foreign")
+  @@index([id_usuario], map: "categorias_movimientos_id_usuario_foreign")
+}
+
+model categorias_productos {
+  id                       BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion              String                    @db.VarChar(255)
+  nombre_imagen            String?                   @db.VarChar(255)
+  ruta_imagen              String?                   @db.VarChar(255)
+  id_estado                BigInt?                   @db.UnsignedBigInt
+  id_estado_online         BigInt?                   @db.UnsignedBigInt
+  id_usuario               BigInt?                   @db.UnsignedBigInt
+  created_at               DateTime?                 @db.Timestamp(0)
+  updated_at               DateTime?                 @db.Timestamp(0)
+  deleted_at               DateTime?                 @db.Timestamp(0)
+  estados                  estados?                  @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_productos_id_estado_foreign")
+  estados_productos_online estados_productos_online? @relation(fields: [id_estado_online], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_productos_id_estado_online_foreign")
+  users                    users?                    @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_productos_id_usuario_foreign")
+  productos                productos[]
+
+  @@index([id_estado], map: "categorias_productos_id_estado_foreign")
+  @@index([id_estado_online], map: "categorias_productos_id_estado_online_foreign")
+  @@index([id_usuario], map: "categorias_productos_id_usuario_foreign")
+}
+
+model clientes {
+  id             BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_cliente String         @db.VarChar(255)
+  descripcion    String         @db.VarChar(255)
+  direccion      String?        @db.VarChar(255)
+  telefono       String?        @db.VarChar(255)
+  id_estado      BigInt?        @db.UnsignedBigInt
+  id_usuario     BigInt?        @db.UnsignedBigInt
+  created_at     DateTime?      @db.Timestamp(0)
+  updated_at     DateTime?      @db.Timestamp(0)
+  deleted_at     DateTime?      @db.Timestamp(0)
+  estados        estados?       @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "clientes_id_estado_foreign")
+  users          users?         @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "clientes_id_usuario_foreign")
+  comprobantes   comprobantes[]
+
+  @@index([id_estado], map: "clientes_id_estado_foreign")
+  @@index([id_usuario], map: "clientes_id_usuario_foreign")
+}
+
+model compra_detalles {
+  id          BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  id_compra   BigInt?    @db.UnsignedBigInt
+  linea       BigInt
+  id_producto BigInt?    @db.UnsignedBigInt
+  cantidad    Float
+  costo       Float
+  total_linea Float
+  id_estado   BigInt?    @db.UnsignedBigInt
+  id_usuario  BigInt?    @db.UnsignedBigInt
+  created_at  DateTime?  @db.Timestamp(0)
+  updated_at  DateTime?  @db.Timestamp(0)
+  deleted_at  DateTime?  @db.Timestamp(0)
+  compras     compras?   @relation(fields: [id_compra], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compra_detalles_id_compra_foreign")
+  estados     estados?   @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compra_detalles_id_estado_foreign")
+  productos   productos? @relation(fields: [id_producto], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compra_detalles_id_producto_foreign")
+  users       users?     @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compra_detalles_id_usuario_foreign")
+
+  @@index([id_compra], map: "compra_detalles_id_compra_foreign")
+  @@index([id_estado], map: "compra_detalles_id_estado_foreign")
+  @@index([id_producto], map: "compra_detalles_id_producto_foreign")
+  @@index([id_usuario], map: "compra_detalles_id_usuario_foreign")
+}
+
+model compras {
+  id                  BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_compra       String               @db.VarChar(255)
+  fecha               DateTime             @db.Date
+  id_categoria        BigInt?              @db.UnsignedBigInt
+  id_proveedor        BigInt?              @db.UnsignedBigInt
+  id_tipo_operacion   BigInt?              @db.UnsignedBigInt
+  id_estado_operacion BigInt?              @db.UnsignedBigInt
+  fecha_pago          DateTime?            @db.Date
+  gravado15           Float?
+  gravado18           Float?
+  impuesto15          Float?
+  impuesto18          Float?
+  exento              Float?
+  exonerado           Float?
+  total               Float
+  id_estado           BigInt?              @db.UnsignedBigInt
+  id_usuario          BigInt?              @db.UnsignedBigInt
+  created_at          DateTime?            @db.Timestamp(0)
+  updated_at          DateTime?            @db.Timestamp(0)
+  deleted_at          DateTime?            @db.Timestamp(0)
+  compra_detalles     compra_detalles[]
+  categorias_compras  categorias_compras?  @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compras_id_categoria_foreign")
+  estados             estados?             @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compras_id_estado_foreign")
+  estados_operaciones estados_operaciones? @relation(fields: [id_estado_operacion], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compras_id_estado_operacion_foreign")
+  proveedores         proveedores?         @relation(fields: [id_proveedor], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compras_id_proveedor_foreign")
+  tipos_operaciones   tipos_operaciones?   @relation(fields: [id_tipo_operacion], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compras_id_tipo_operacion_foreign")
+  users               users?               @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "compras_id_usuario_foreign")
+
+  @@index([id_categoria], map: "compras_id_categoria_foreign")
+  @@index([id_estado], map: "compras_id_estado_foreign")
+  @@index([id_estado_operacion], map: "compras_id_estado_operacion_foreign")
+  @@index([id_proveedor], map: "compras_id_proveedor_foreign")
+  @@index([id_tipo_operacion], map: "compras_id_tipo_operacion_foreign")
+  @@index([id_usuario], map: "compras_id_usuario_foreign")
+}
+
+model comprobantes {
+  id                      BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_comprobante      String                   @db.VarChar(255)
+  fecha                   DateTime                 @db.Date
+  fecha_hora              DateTime                 @db.DateTime(0)
+  fecha_vencimiento       DateTime                 @db.Date
+  id_cliente              BigInt?                  @db.UnsignedBigInt
+  gravado15               Float?
+  gravado18               Float?
+  impuesto15              Float?
+  impuesto18              Float?
+  exento                  Float?
+  exonerado               Float?
+  descuentos              Float?
+  subtotal                Float?
+  total                   Float?
+  id_categoria            BigInt?                  @db.UnsignedBigInt
+  id_tipo_comprobante     BigInt?                  @db.UnsignedBigInt
+  id_estado_comprobante   BigInt?                  @db.UnsignedBigInt
+  id_estado               BigInt?                  @db.UnsignedBigInt
+  id_usuario              BigInt?                  @db.UnsignedBigInt
+  created_at              DateTime?                @db.Timestamp(0)
+  updated_at              DateTime?                @db.Timestamp(0)
+  deleted_at              DateTime?                @db.Timestamp(0)
+  categorias_comprobantes categorias_comprobantes? @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_id_categoria_foreign")
+  clientes                clientes?                @relation(fields: [id_cliente], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_id_cliente_foreign")
+  estados_comprobantes    estados_comprobantes?    @relation(fields: [id_estado_comprobante], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_id_estado_comprobante_foreign")
+  estados                 estados?                 @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_id_estado_foreign")
+  tipos_comprobantes      tipos_comprobantes?      @relation(fields: [id_tipo_comprobante], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_id_tipo_comprobante_foreign")
+  users                   users?                   @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_id_usuario_foreign")
+  comprobantes_detalles   comprobantes_detalles[]
+  comprobantes_folios     comprobantes_folios[]
+  comprobantes_pagos      comprobantes_pagos[]
+  ventas                  ventas[]
+
+  @@index([id_categoria], map: "comprobantes_id_categoria_foreign")
+  @@index([id_cliente], map: "comprobantes_id_cliente_foreign")
+  @@index([id_estado_comprobante], map: "comprobantes_id_estado_comprobante_foreign")
+  @@index([id_estado], map: "comprobantes_id_estado_foreign")
+  @@index([id_tipo_comprobante], map: "comprobantes_id_tipo_comprobante_foreign")
+  @@index([id_usuario], map: "comprobantes_id_usuario_foreign")
+}
+
+model comprobantes_detalles {
+  id             BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  linea          Float
+  id_comprobante BigInt?       @db.UnsignedBigInt
+  id_producto    BigInt?       @db.UnsignedBigInt
+  cantidad       Float
+  precio         Float
+  total_linea    Float
+  id_usuario     BigInt?       @db.UnsignedBigInt
+  created_at     DateTime?     @db.Timestamp(0)
+  updated_at     DateTime?     @db.Timestamp(0)
+  deleted_at     DateTime?     @db.Timestamp(0)
+  comprobantes   comprobantes? @relation(fields: [id_comprobante], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_detalles_id_comprobante_foreign")
+  productos      productos?    @relation(fields: [id_producto], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_detalles_id_producto_foreign")
+  users          users?        @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_detalles_id_usuario_foreign")
+
+  @@index([id_comprobante], map: "comprobantes_detalles_id_comprobante_foreign")
+  @@index([id_producto], map: "comprobantes_detalles_id_producto_foreign")
+  @@index([id_usuario], map: "comprobantes_detalles_id_usuario_foreign")
+}
+
+model comprobantes_folios {
+  id             BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  id_folio       BigInt?       @db.UnsignedBigInt
+  id_comprobante BigInt?       @db.UnsignedBigInt
+  id_estado      BigInt?       @db.UnsignedBigInt
+  id_usuario     BigInt?       @db.UnsignedBigInt
+  created_at     DateTime?     @db.Timestamp(0)
+  updated_at     DateTime?     @db.Timestamp(0)
+  deleted_at     DateTime?     @db.Timestamp(0)
+  comprobantes   comprobantes? @relation(fields: [id_comprobante], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_folios_id_comprobante_foreign")
+  estados        estados?      @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_folios_id_estado_foreign")
+  folios         folios?       @relation(fields: [id_folio], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_folios_id_folio_foreign")
+  users          users?        @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_folios_id_usuario_foreign")
+
+  @@index([id_comprobante], map: "comprobantes_folios_id_comprobante_foreign")
+  @@index([id_estado], map: "comprobantes_folios_id_estado_foreign")
+  @@index([id_folio], map: "comprobantes_folios_id_folio_foreign")
+  @@index([id_usuario], map: "comprobantes_folios_id_usuario_foreign")
+}
+
+model comprobantes_pagos {
+  id             BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  id_comprobante BigInt?        @db.UnsignedBigInt
+  id_metodo_pago BigInt?        @db.UnsignedBigInt
+  fecha_hora     DateTime       @db.DateTime(0)
+  referencia     String?        @db.VarChar(255)
+  comentario     String?        @db.VarChar(255)
+  created_at     DateTime?      @db.Timestamp(0)
+  updated_at     DateTime?      @db.Timestamp(0)
+  deleted_at     DateTime?      @db.Timestamp(0)
+  comprobantes   comprobantes?  @relation(fields: [id_comprobante], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_pagos_id_comprobante_foreign")
+  metodos_pagos  metodos_pagos? @relation(fields: [id_metodo_pago], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "comprobantes_pagos_id_metodo_pago_foreign")
+
+  @@index([id_comprobante], map: "comprobantes_pagos_id_comprobante_foreign")
+  @@index([id_metodo_pago], map: "comprobantes_pagos_id_metodo_pago_foreign")
+}
+
+model currency_exchange {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion String    @db.VarChar(255)
+  compra      Float
+  venta       Float
+  id_estado   BigInt?   @db.UnsignedBigInt
+  id_usuario  BigInt?   @db.UnsignedBigInt
+  created_at  DateTime? @db.Timestamp(0)
+  updated_at  DateTime? @db.Timestamp(0)
+  deleted_at  DateTime? @db.Timestamp(0)
+  estados     estados?  @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_exchange_id_estado_foreign")
+  users       users?    @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_exchange_id_usuario_foreign")
+
+  @@index([id_estado], map: "currency_exchange_id_estado_foreign")
+  @@index([id_usuario], map: "currency_exchange_id_usuario_foreign")
+}
+
+model empleados {
+  id                   BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_empleado      String                @db.VarChar(255)
+  descripcion          String                @db.VarChar(255)
+  id_categoria         BigInt?               @db.UnsignedBigInt
+  id_area              BigInt?               @db.UnsignedBigInt
+  telefono             String                @db.VarChar(255)
+  id_estado            BigInt?               @db.UnsignedBigInt
+  id_usuario           BigInt?               @db.UnsignedBigInt
+  created_at           DateTime?             @db.Timestamp(0)
+  updated_at           DateTime?             @db.Timestamp(0)
+  deleted_at           DateTime?             @db.Timestamp(0)
+  areas_empleados      areas_empleados?      @relation(fields: [id_area], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "empleados_id_area_foreign")
+  categorias_empleados categorias_empleados? @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "empleados_id_categoria_foreign")
+  estados              estados?              @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "empleados_id_estado_foreign")
+  users                users?                @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "empleados_id_usuario_foreign")
+  planillas            planillas[]
+
+  @@index([id_area], map: "empleados_id_area_foreign")
+  @@index([id_categoria], map: "empleados_id_categoria_foreign")
+  @@index([id_estado], map: "empleados_id_estado_foreign")
+  @@index([id_usuario], map: "empleados_id_usuario_foreign")
+}
+
+model empresas {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_empresa String    @unique(map: "empresas_codigo_empresa_unique") @db.VarChar(255)
+  descripcion    String    @db.VarChar(255)
+  razon_social   String    @db.VarChar(255)
+  direccion      String    @db.VarChar(255)
+  ciudad         String    @db.VarChar(255)
+  departamento   String    @db.VarChar(255)
+  telefono       String    @db.VarChar(255)
+  celular        String    @db.VarChar(255)
+  correo         String    @db.VarChar(255)
+  cai            String    @db.VarChar(255)
+  id_estado      BigInt?   @db.UnsignedBigInt
+  id_usuario     BigInt?   @db.UnsignedBigInt
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+  deleted_at     DateTime? @db.Timestamp(0)
+  estados        estados?  @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "empresas_id_estado_foreign")
+  users          users?    @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "empresas_id_usuario_foreign")
+
+  @@index([id_estado], map: "empresas_id_estado_foreign")
+  @@index([id_usuario], map: "empresas_id_usuario_foreign")
+}
+
+model estados {
+  id                      BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion             String                    @db.VarChar(255)
+  deleted_at              DateTime?                 @db.Timestamp(0)
+  areas_empleados         areas_empleados[]
+  cajas                   cajas[]
+  cajas_movimientos       cajas_movimientos[]
+  cajas_sesiones          cajas_sesiones[]
+  categorias_compras      categorias_compras[]
+  categorias_comprobantes categorias_comprobantes[]
+  categorias_empleados    categorias_empleados[]
+  categorias_gastos       categorias_gastos[]
+  categorias_ingresos     categorias_ingresos[]
+  categorias_movimientos  categorias_movimientos[]
+  categorias_productos    categorias_productos[]
+  clientes                clientes[]
+  compra_detalles         compra_detalles[]
+  compras                 compras[]
+  comprobantes            comprobantes[]
+  comprobantes_folios     comprobantes_folios[]
+  currency_exchange       currency_exchange[]
+  empleados               empleados[]
+  empresas                empresas[]
+  folios                  folios[]
+  gastos                  gastos[]
+  impuestos               impuestos[]
+  ingresos                ingresos[]
+  medios_movimientos      medios_movimientos[]
+  metodos_pagos           metodos_pagos[]
+  planillas               planillas[]
+  producto_multimedias    producto_multimedias[]
+  productos               productos[]
+  proveedores             proveedores[]
+  tipos_compras           tipos_compras[]
+  tipos_comprobantes      tipos_comprobantes[]
+  tipos_gastos            tipos_gastos[]
+  tipos_ingresos          tipos_ingresos[]
+  tipos_operaciones       tipos_operaciones[]
+  tipos_planillas         tipos_planillas[]
+  ventas                  ventas[]
+}
+
+model estados_comprobantes {
+  id           BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion  String         @db.VarChar(255)
+  deleted_at   DateTime?      @db.Timestamp(0)
+  comprobantes comprobantes[]
+}
+
+model estados_operaciones {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion String    @db.VarChar(255)
+  deleted_at  DateTime? @db.Timestamp(0)
+  compras     compras[]
+}
+
+model estados_productos_online {
+  id                   BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion          String                 @db.VarChar(255)
+  deleted_at           DateTime?              @db.Timestamp(0)
+  categorias_productos categorias_productos[]
+  productos            productos[]
+}
+
+model estados_sesiones {
+  id             BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion    String           @db.VarChar(255)
+  deleted_at     DateTime?        @db.Timestamp(0)
+  cajas_sesiones cajas_sesiones[]
+}
+
+model failed_jobs {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid       String   @unique(map: "failed_jobs_uuid_unique") @db.VarChar(255)
+  connection String   @db.Text
+  queue      String   @db.Text
+  payload    String   @db.LongText
+  exception  String   @db.LongText
+  failed_at  DateTime @default(now()) @db.Timestamp(0)
+}
+
+model folios {
+  id                  BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_folio        String                @db.VarChar(255)
+  descripcion         String?               @db.VarChar(255)
+  fecha_limite        DateTime              @db.Date
+  inicio              Float
+  final               Float
+  actual              Float
+  id_estado           BigInt?               @db.UnsignedBigInt
+  id_usuario          BigInt?               @db.UnsignedBigInt
+  created_at          DateTime?             @db.Timestamp(0)
+  updated_at          DateTime?             @db.Timestamp(0)
+  deleted_at          DateTime?             @db.Timestamp(0)
+  comprobantes_folios comprobantes_folios[]
+  estados             estados?              @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "folios_id_estado_foreign")
+  users               users?                @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "folios_id_usuario_foreign")
+
+  @@index([id_estado], map: "folios_id_estado_foreign")
+  @@index([id_usuario], map: "folios_id_usuario_foreign")
+}
+
+model gasto_planillas {
+  id          BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  id_gasto    BigInt?    @db.UnsignedBigInt
+  id_planilla BigInt?    @db.UnsignedBigInt
+  created_at  DateTime?  @db.Timestamp(0)
+  updated_at  DateTime?  @db.Timestamp(0)
+  deleted_at  DateTime?  @db.Timestamp(0)
+  gastos      gastos?    @relation(fields: [id_gasto], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "gasto_planillas_id_gasto_foreign")
+  planillas   planillas? @relation(fields: [id_planilla], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "gasto_planillas_id_planilla_foreign")
+
+  @@index([id_gasto], map: "gasto_planillas_id_gasto_foreign")
+  @@index([id_planilla], map: "gasto_planillas_id_planilla_foreign")
+}
+
+model gastos {
+  id                BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_gasto      String             @db.VarChar(255)
+  fecha             DateTime           @db.Date
+  descripcion       String             @db.VarChar(255)
+  id_categoria      BigInt?            @db.UnsignedBigInt
+  total             Float
+  id_estado         BigInt?            @db.UnsignedBigInt
+  id_usuario        BigInt?            @db.UnsignedBigInt
+  created_at        DateTime?          @db.Timestamp(0)
+  updated_at        DateTime?          @db.Timestamp(0)
+  deleted_at        DateTime?          @db.Timestamp(0)
+  gasto_planillas   gasto_planillas[]
+  categorias_gastos categorias_gastos? @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "gastos_id_categoria_foreign")
+  estados           estados?           @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "gastos_id_estado_foreign")
+  users             users?             @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "gastos_id_usuario_foreign")
+
+  @@index([id_categoria], map: "gastos_id_categoria_foreign")
+  @@index([id_estado], map: "gastos_id_estado_foreign")
+  @@index([id_usuario], map: "gastos_id_usuario_foreign")
+}
+
+model impuestos {
+  id          BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion String      @db.VarChar(255)
+  valor       Float
+  id_estado   BigInt?     @db.UnsignedBigInt
+  created_at  DateTime?   @db.Timestamp(0)
+  updated_at  DateTime?   @db.Timestamp(0)
+  deleted_at  DateTime?   @db.Timestamp(0)
+  estados     estados?    @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "impuestos_id_estado_foreign")
+  productos   productos[]
+
+  @@index([id_estado], map: "impuestos_id_estado_foreign")
+}
+
+model ingresos {
+  id                  BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion         String               @db.VarChar(255)
+  fecha               DateTime             @db.Date
+  id_categoria        BigInt?              @db.UnsignedBigInt
+  total               Float
+  id_estado           BigInt?              @db.UnsignedBigInt
+  id_usuario          BigInt?              @db.UnsignedBigInt
+  created_at          DateTime?            @db.Timestamp(0)
+  updated_at          DateTime?            @db.Timestamp(0)
+  deleted_at          DateTime?            @db.Timestamp(0)
+  categorias_ingresos categorias_ingresos? @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ingresos_id_categoria_foreign")
+  estados             estados?             @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ingresos_id_estado_foreign")
+  users               users?               @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ingresos_id_usuario_foreign")
+
+  @@index([id_categoria], map: "ingresos_id_categoria_foreign")
+  @@index([id_estado], map: "ingresos_id_estado_foreign")
+  @@index([id_usuario], map: "ingresos_id_usuario_foreign")
+}
+
+model job_batches {
+  id             String  @id @db.VarChar(255)
+  name           String  @db.VarChar(255)
+  total_jobs     Int
+  pending_jobs   Int
+  failed_jobs    Int
+  failed_job_ids String  @db.LongText
+  options        String? @db.MediumText
+  cancelled_at   Int?
+  created_at     Int
+  finished_at    Int?
+}
+
+model jobs {
+  id           BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  queue        String @db.VarChar(255)
+  payload      String @db.LongText
+  attempts     Int    @db.UnsignedTinyInt
+  reserved_at  Int?   @db.UnsignedInt
+  available_at Int    @db.UnsignedInt
+  created_at   Int    @db.UnsignedInt
+
+  @@index([queue], map: "jobs_queue_index")
+}
+
+model medios_movimientos {
+  id                BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion       String              @db.VarChar(255)
+  id_estado         BigInt?             @db.UnsignedBigInt
+  id_usuario        BigInt?             @db.UnsignedBigInt
+  created_at        DateTime?           @db.Timestamp(0)
+  updated_at        DateTime?           @db.Timestamp(0)
+  deleted_at        DateTime?           @db.Timestamp(0)
+  cajas_movimientos cajas_movimientos[]
+  estados           estados?            @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "medios_movimientos_id_estado_foreign")
+  users             users?              @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "medios_movimientos_id_usuario_foreign")
+
+  @@index([id_estado], map: "medios_movimientos_id_estado_foreign")
+  @@index([id_usuario], map: "medios_movimientos_id_usuario_foreign")
+}
+
+model metodos_pagos {
+  id                 BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion        String               @db.VarChar(255)
+  id_tipo_operacion  BigInt?              @db.UnsignedBigInt
+  id_estado          BigInt?              @db.UnsignedBigInt
+  id_usuario         BigInt?              @db.UnsignedBigInt
+  created_at         DateTime?            @db.Timestamp(0)
+  updated_at         DateTime?            @db.Timestamp(0)
+  deleted_at         DateTime?            @db.Timestamp(0)
+  comprobantes_pagos comprobantes_pagos[]
+  estados            estados?             @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "metodos_pagos_id_estado_foreign")
+  tipos_operaciones  tipos_operaciones?   @relation(fields: [id_tipo_operacion], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "metodos_pagos_id_tipo_operacion_foreign")
+  users              users?               @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "metodos_pagos_id_usuario_foreign")
+
+  @@index([id_estado], map: "metodos_pagos_id_estado_foreign")
+  @@index([id_tipo_operacion], map: "metodos_pagos_id_tipo_operacion_foreign")
+  @@index([id_usuario], map: "metodos_pagos_id_usuario_foreign")
+}
+
+model migrations {
+  id        Int    @id @default(autoincrement()) @db.UnsignedInt
+  migration String @db.VarChar(255)
+  batch     Int
+}
+
+model password_reset_tokens {
+  email      String    @id @db.VarChar(255)
+  token      String    @db.VarChar(255)
+  created_at DateTime? @db.Timestamp(0)
+}
+
+model personal_access_tokens {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  tokenable_type String    @db.VarChar(255)
+  tokenable_id   BigInt    @db.UnsignedBigInt
+  name           String    @db.VarChar(255)
+  token          String    @unique(map: "personal_access_tokens_token_unique") @db.VarChar(64)
+  abilities      String?   @db.Text
+  last_used_at   DateTime? @db.Timestamp(0)
+  expires_at     DateTime? @db.Timestamp(0)
+  created_at     DateTime? @db.Timestamp(0)
+  updated_at     DateTime? @db.Timestamp(0)
+
+  @@index([tokenable_type, tokenable_id], map: "personal_access_tokens_tokenable_type_tokenable_id_index")
+}
+
+model planillas {
+  id              BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion     String            @db.VarChar(255)
+  fecha           DateTime          @db.Date
+  id_empleado     BigInt?           @db.UnsignedBigInt
+  total           Float
+  id_estado       BigInt?           @db.UnsignedBigInt
+  id_usuario      BigInt?           @db.UnsignedBigInt
+  created_at      DateTime?         @db.Timestamp(0)
+  updated_at      DateTime?         @db.Timestamp(0)
+  deleted_at      DateTime?         @db.Timestamp(0)
+  gasto_planillas gasto_planillas[]
+  empleados       empleados?        @relation(fields: [id_empleado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_empleado_foreign")
+  estados         estados?          @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_estado_foreign")
+  users           users?            @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_usuario_foreign")
+
+  @@index([id_empleado], map: "planillas_id_empleado_foreign")
+  @@index([id_estado], map: "planillas_id_estado_foreign")
+  @@index([id_usuario], map: "planillas_id_usuario_foreign")
+}
+
+model producto_multimedias {
+  id            BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  id_producto   BigInt?    @db.UnsignedBigInt
+  nombre_imagen String     @db.VarChar(255)
+  ruta_imagen   String     @db.VarChar(255)
+  id_estado     BigInt?    @db.UnsignedBigInt
+  id_usuario    BigInt?    @db.UnsignedBigInt
+  created_at    DateTime?  @db.Timestamp(0)
+  updated_at    DateTime?  @db.Timestamp(0)
+  deleted_at    DateTime?  @db.Timestamp(0)
+  estados       estados?   @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "producto_multimedias_id_estado_foreign")
+  productos     productos? @relation(fields: [id_producto], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "producto_multimedias_id_producto_foreign")
+  users         users?     @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "producto_multimedias_id_usuario_foreign")
+
+  @@index([id_estado], map: "producto_multimedias_id_estado_foreign")
+  @@index([id_producto], map: "producto_multimedias_id_producto_foreign")
+  @@index([id_usuario], map: "producto_multimedias_id_usuario_foreign")
+}
+
+model productos {
+  id                       BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_producto          String                    @db.VarChar(255)
+  descripcion              String                    @db.VarChar(255)
+  id_categoria             BigInt?                   @db.UnsignedBigInt
+  marca                    String                    @db.VarChar(255)
+  size                     String?                   @db.VarChar(255)
+  color                    String?                   @db.VarChar(255)
+  id_proveedor             BigInt?                   @db.UnsignedBigInt
+  peso                     Float
+  stock                    Float
+  id_impuesto              BigInt?                   @db.UnsignedBigInt
+  gravado15                Float?
+  gravado18                Float?
+  impuesto15               Float?
+  impuesto18               Float?
+  exento                   Float?
+  exonerado                Float?
+  costo                    Float?
+  precio_venta             Float
+  precio_web               Float?
+  valor                    Float
+  id_estado_online         BigInt?                   @db.UnsignedBigInt
+  id_estado                BigInt?                   @db.UnsignedBigInt
+  id_usuario               BigInt?                   @db.UnsignedBigInt
+  created_at               DateTime?                 @db.Timestamp(0)
+  updated_at               DateTime?                 @db.Timestamp(0)
+  deleted_at               DateTime?                 @db.Timestamp(0)
+  compra_detalles          compra_detalles[]
+  comprobantes_detalles    comprobantes_detalles[]
+  producto_multimedias     producto_multimedias[]
+  categorias_productos     categorias_productos?     @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "productos_id_categoria_foreign")
+  estados                  estados?                  @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "productos_id_estado_foreign")
+  estados_productos_online estados_productos_online? @relation(fields: [id_estado_online], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "productos_id_estado_online_foreign")
+  impuestos                impuestos?                @relation(fields: [id_impuesto], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "productos_id_impuesto_foreign")
+  proveedores              proveedores?              @relation(fields: [id_proveedor], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "productos_id_proveedor_foreign")
+  users                    users?                    @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "productos_id_usuario_foreign")
+
+  @@index([id_categoria], map: "productos_id_categoria_foreign")
+  @@index([id_estado], map: "productos_id_estado_foreign")
+  @@index([id_estado_online], map: "productos_id_estado_online_foreign")
+  @@index([id_impuesto], map: "productos_id_impuesto_foreign")
+  @@index([id_proveedor], map: "productos_id_proveedor_foreign")
+  @@index([id_usuario], map: "productos_id_usuario_foreign")
+}
+
+model proveedores {
+  id               BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  codigo_proveedor String      @db.VarChar(255)
+  descripcion      String      @db.VarChar(255)
+  categoria        String      @db.VarChar(255)
+  contacto         String      @db.VarChar(255)
+  telefono         String?     @db.VarChar(255)
+  id_estado        BigInt?     @db.UnsignedBigInt
+  id_usuario       BigInt?     @db.UnsignedBigInt
+  created_at       DateTime?   @db.Timestamp(0)
+  updated_at       DateTime?   @db.Timestamp(0)
+  deleted_at       DateTime?   @db.Timestamp(0)
+  compras          compras[]
+  productos        productos[]
+  estados          estados?    @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "proveedores_id_estado_foreign")
+  users            users?      @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "proveedores_id_usuario_foreign")
+
+  @@index([id_estado], map: "proveedores_id_estado_foreign")
+  @@index([id_usuario], map: "proveedores_id_usuario_foreign")
+}
+
+model sessions {
+  id            String  @id @db.VarChar(255)
+  user_id       BigInt? @db.UnsignedBigInt
+  ip_address    String? @db.VarChar(45)
+  user_agent    String? @db.Text
+  payload       String  @db.LongText
+  last_activity Int
+
+  @@index([last_activity], map: "sessions_last_activity_index")
+  @@index([user_id], map: "sessions_user_id_index")
+}
+
+model tipos_compras {
+  id                 BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion        String               @db.VarChar(255)
+  id_estado          BigInt?              @db.UnsignedBigInt
+  created_at         DateTime?            @db.Timestamp(0)
+  updated_at         DateTime?            @db.Timestamp(0)
+  deleted_at         DateTime?            @db.Timestamp(0)
+  categorias_compras categorias_compras[]
+  estados            estados?             @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tipos_compras_id_estado_foreign")
+
+  @@index([id_estado], map: "tipos_compras_id_estado_foreign")
+}
+
+model tipos_comprobantes {
+  id           BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion  String         @db.VarChar(255)
+  id_estado    BigInt?        @db.UnsignedBigInt
+  created_at   DateTime?      @db.Timestamp(0)
+  updated_at   DateTime?      @db.Timestamp(0)
+  deleted_at   DateTime?      @db.Timestamp(0)
+  comprobantes comprobantes[]
+  estados      estados?       @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tipos_comprobantes_id_estado_foreign")
+
+  @@index([id_estado], map: "tipos_comprobantes_id_estado_foreign")
+}
+
+model tipos_gastos {
+  id                BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion       String              @db.VarChar(255)
+  id_estado         BigInt?             @db.UnsignedBigInt
+  created_at        DateTime?           @db.Timestamp(0)
+  updated_at        DateTime?           @db.Timestamp(0)
+  deleted_at        DateTime?           @db.Timestamp(0)
+  categorias_gastos categorias_gastos[]
+  estados           estados?            @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tipos_gastos_id_estado_foreign")
+
+  @@index([id_estado], map: "tipos_gastos_id_estado_foreign")
+}
+
+model tipos_ingresos {
+  id                  BigInt                @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion         String                @db.VarChar(255)
+  id_estado           BigInt?               @db.UnsignedBigInt
+  created_at          DateTime?             @db.Timestamp(0)
+  updated_at          DateTime?             @db.Timestamp(0)
+  deleted_at          DateTime?             @db.Timestamp(0)
+  categorias_ingresos categorias_ingresos[]
+  estados             estados?              @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tipos_ingresos_id_estado_foreign")
+
+  @@index([id_estado], map: "tipos_ingresos_id_estado_foreign")
+}
+
+model tipos_operaciones {
+  id            BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion   String          @db.VarChar(255)
+  id_estado     BigInt?         @db.UnsignedBigInt
+  created_at    DateTime?       @db.Timestamp(0)
+  updated_at    DateTime?       @db.Timestamp(0)
+  deleted_at    DateTime?       @db.Timestamp(0)
+  compras       compras[]
+  metodos_pagos metodos_pagos[]
+  estados       estados?        @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tipos_operaciones_id_estado_foreign")
+
+  @@index([id_estado], map: "tipos_operaciones_id_estado_foreign")
+}
+
+model tipos_planillas {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  descripcion String    @db.VarChar(255)
+  id_estado   BigInt?   @db.UnsignedBigInt
+  created_at  DateTime? @db.Timestamp(0)
+  updated_at  DateTime? @db.Timestamp(0)
+  deleted_at  DateTime? @db.Timestamp(0)
+  estados     estados?  @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tipos_planillas_id_estado_foreign")
+
+  @@index([id_estado], map: "tipos_planillas_id_estado_foreign")
+}
+
+model users {
+  id                                                      BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  name                                                    String                    @db.VarChar(255)
+  email                                                   String                    @unique(map: "users_email_unique") @db.VarChar(255)
+  email_verified_at                                       DateTime?                 @db.Timestamp(0)
+  password                                                String                    @db.VarChar(255)
+  remember_token                                          String?                   @db.VarChar(100)
+  created_at                                              DateTime?                 @db.Timestamp(0)
+  updated_at                                              DateTime?                 @db.Timestamp(0)
+  areas_empleados                                         areas_empleados[]
+  cajas                                                   cajas[]
+  cajas_movimientos                                       cajas_movimientos[]
+  cajas_sesiones_cajas_sesiones_id_usuario_auditorTousers cajas_sesiones[]          @relation("cajas_sesiones_id_usuario_auditorTousers")
+  cajas_sesiones_cajas_sesiones_id_usuarioTousers         cajas_sesiones[]          @relation("cajas_sesiones_id_usuarioTousers")
+  categorias_compras                                      categorias_compras[]
+  categorias_comprobantes                                 categorias_comprobantes[]
+  categorias_empleados                                    categorias_empleados[]
+  categorias_gastos                                       categorias_gastos[]
+  categorias_ingresos                                     categorias_ingresos[]
+  categorias_movimientos                                  categorias_movimientos[]
+  categorias_productos                                    categorias_productos[]
+  clientes                                                clientes[]
+  compra_detalles                                         compra_detalles[]
+  compras                                                 compras[]
+  comprobantes                                            comprobantes[]
+  comprobantes_detalles                                   comprobantes_detalles[]
+  comprobantes_folios                                     comprobantes_folios[]
+  currency_exchange                                       currency_exchange[]
+  empleados                                               empleados[]
+  empresas                                                empresas[]
+  folios                                                  folios[]
+  gastos                                                  gastos[]
+  ingresos                                                ingresos[]
+  medios_movimientos                                      medios_movimientos[]
+  metodos_pagos                                           metodos_pagos[]
+  planillas                                               planillas[]
+  producto_multimedias                                    producto_multimedias[]
+  productos                                               productos[]
+  proveedores                                             proveedores[]
+  ventas                                                  ventas[]
+}
+
+model ventas {
+  id                BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  fecha             DateTime           @db.DateTime(0)
+  total             Float
+  id_movimiento     BigInt?            @db.UnsignedBigInt
+  id_comprobante    BigInt?            @db.UnsignedBigInt
+  id_estado         BigInt?            @db.UnsignedBigInt
+  id_usuario        BigInt?            @db.UnsignedBigInt
+  created_at        DateTime?          @db.Timestamp(0)
+  updated_at        DateTime?          @db.Timestamp(0)
+  deleted_at        DateTime?          @db.Timestamp(0)
+  comprobantes      comprobantes?      @relation(fields: [id_comprobante], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ventas_id_comprobante_foreign")
+  estados           estados?           @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ventas_id_estado_foreign")
+  cajas_movimientos cajas_movimientos? @relation(fields: [id_movimiento], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ventas_id_movimiento_foreign")
+  users             users?             @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ventas_id_usuario_foreign")
+
+  @@index([id_comprobante], map: "ventas_id_comprobante_foreign")
+  @@index([id_estado], map: "ventas_id_estado_foreign")
+  @@index([id_movimiento], map: "ventas_id_movimiento_foreign")
+  @@index([id_usuario], map: "ventas_id_usuario_foreign")
+}
