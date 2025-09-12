@@ -1,5 +1,5 @@
-// CONTROLADOR DE INGRESOS
-// Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar ingresos
+// CONTROLADOR DE PLANILLAS
+// Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar planillas
 
 //  Importaciones necesarias
 const { PrismaClient } = require('../generated/prisma');     // ORM para base de datos
@@ -8,9 +8,9 @@ const { validationResult } = require('express-validator');   // Para manejar err
 //  Crear instancia de Prisma
 const prisma = new PrismaClient(); // ORM para base de datos
 
-// OBTENER LISTA DE INGRESOS (READ)
-// GET /api/ingresos - Con paginación y búsqueda
-const getIngresos = async (req, res) => {
+// OBTENER LISTA DE PLANILLAS (READ)
+// GET /api/planillas - Con paginación y búsqueda
+const getPlanillas = async (req, res) => {
     try {
         // 1.  Extraer parámetros de consulta con valores por defecto
         const {
@@ -25,19 +25,19 @@ const getIngresos = async (req, res) => {
 
         // 3.  Configurar filtros de búsqueda + solo mostrar activas (soft delete)
         const whereCondition = {
-            id_estado: BigInt(1),  // Solo mostrar ingresos activas (no eliminadas)
+            id_estado: BigInt(1),  // Solo mostrar planillas activas (no eliminadas)
             deleted_at: null,      // Solo registros NO eliminados (doble verificación)
             ...(search && {
                 OR: [  // Buscar en cualquiera de estos campos
-                    { codigo_ingreso: { contains: search } },  // Buscar en código
+                    { codigo_planilla: { contains: search } },  // Buscar en código
                 ]
             })
         };
 
         // 4.  Ejecutar consultas en paralelo para optimizar rendimiento
-        const [ingresos, total] = await Promise.all([
-            // Obtener ingresos con paginación y filtros
-            prisma.ingresos.findMany({
+        const [planillas, total] = await Promise.all([
+            // Obtener planillas con paginación y filtros
+            prisma.planillas.findMany({
                 where: whereCondition,
                 skip: parseInt(skip),           // Saltar registros para paginación
                 take: parseInt(limit),          // Limitar cantidad de resultados
@@ -45,14 +45,14 @@ const getIngresos = async (req, res) => {
             }),
 
             // Contar total de registros que coinciden con los filtros
-            prisma.ingresos.count({ where: whereCondition })
+            prisma.planillas.count({ where: whereCondition })
         ]);
 
 
 
         // 5. Enviar respuesta con datos (el middleware se encarga de la serialización)
         res.json({
-            data: ingresos,  // Array de ingresos - el middleware convertirá automáticamente BigInt y Date
+            data: planillas,  // Array de planillas - el middleware convertirá automáticamente BigInt y Date
             pagination: {
                 page: parseInt(page),           // Página actual
                 limit: parseInt(limit),         // Elementos por página
@@ -63,47 +63,47 @@ const getIngresos = async (req, res) => {
 
     } catch (error) {
         //  Manejar errores
-        console.error('Error obteniendo ingresos:', error);
+        console.error('Error obteniendo planillas:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 };
 
-//  OBTENER INGRESO POR ID (READ)
-// GET /api/ingresos/:id
-const getIngresoById = async (req, res) => {
+//  OBTENER PLANILLA POR ID (READ)
+// GET /api/planillas/:id
+const getPlanillaById = async (req, res) => {
     try {
-        // 1.  Obtener ID de la ingreso desde los parámetros de la URL
+        // 1.  Obtener ID de la planilla desde los parámetros de la URL
         const { id } = req.params;
 
-        console.log(' Buscando ingreso con ID:', id);
+        console.log(' Buscando planilla con ID:', id);
 
-        // 2. 🔍 Buscar ingreso específica en la base de datos (solo activas)
-        const ingreso = await prisma.ingresos.findUnique({
+        // 2. 🔍 Buscar planilla específica en la base de datos (solo activas)
+        const planilla = await prisma.planillas.findUnique({
             where: {
                 id: BigInt(id),
-                id_estado: BigInt(1),  // Solo ingresos activas
+                id_estado: BigInt(1),  // Solo planillas activas
                 deleted_at: null       // Solo registros NO eliminados
             }
         });
 
-        // 3. Verificar si la ingreso existe
-        if (!ingreso) {
+        // 3. Verificar si la planilla existe
+        if (!planilla) {
             return res.status(404).json({
                 success: false,
-                message: ' Ingreso no encontrada'
+                message: ' Planilla no encontrada'
             });
         }
 
-        // 4.  Enviar respuesta exitosa con los datos de la ingreso
+        // 4.  Enviar respuesta exitosa con los datos de la planilla
         res.json({
             success: true,
-            message: ' Ingreso encontrada',
-            data: ingreso
+            message: ' Planilla encontrada',
+            data: planilla
         });
 
     } catch (error) {
         //  Manejar errores (incluye error P2025 si el ID no existe)
-        console.error(' Error obteniendo ingreso:', error);
+        console.error(' Error obteniendo planilla:', error);
         res.status(500).json({
             success: false,
             message: ' Error interno del servidor'
@@ -111,9 +111,9 @@ const getIngresoById = async (req, res) => {
     }
 };
 
-//  CREAR NUEVA INGRESO (CREATE)
-// POST /api/ingresos
-const createIngreso = async (req, res) => {
+//  CREAR NUEVA PLANILLA (CREATE)
+// POST /api/planillas
+const createPlanilla = async (req, res) => {
     try {
         // 1.  Verificar que las validaciones pasaron
         const errors = validationResult(req);
@@ -122,7 +122,7 @@ const createIngreso = async (req, res) => {
         }
 
         // 2.  Extraer datos del cuerpo de la petición
-        const { codigo_ingreso, fecha, descripcion, id_categoria, total } = req.body;
+        const { codigo_planilla, fecha, descripcion, id_categoria, total } = req.body;
 
         // 3.  Obtener ID del usuario autenticado desde el token JWT
         // req.user fue establecido por authMiddleware
@@ -130,12 +130,28 @@ const createIngreso = async (req, res) => {
         const id_estado_operacion = id_tipo_operacion == 1 ? BigInt(1) : BigInt(2); // Si es de contado (1) si es credito es 2
 
 
-        // 4. Crear ingreso en la base de datos
-        const ingreso = await prisma.ingresos.create({
+        // 4. Crear planilla en la base de datos
+        const planilla = await prisma.planillas.create({
             data: {
-                codigo_ingreso,
+                codigo_planilla, // Generar código único basado en timestamp
                 fecha,
                 descripcion,
+                id_categoria,
+                id_empleado,
+                total,
+                id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
+                id_usuario: userId,        // Usuario que creó el registro
+                created_at: new Date(),    // Timestamp de creación
+                updated_at: new Date(),     // Timestamp de última actualización
+            }
+        });
+
+
+        const gasto = await prisma.gastos.create({
+            data: {
+                codigo_gasto: planilla.codigo_planilla, // Usar mismo código que la planilla
+                fecha,
+                descripcion: planilla.descripcion,
                 id_categoria,
                 total,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
@@ -145,43 +161,62 @@ const createIngreso = async (req, res) => {
             }
         });
 
-        console.log(' Ingreso creada exitosamente:', ingreso.id);
+        console.log(' Planilla creada exitosamente:', planilla.id);
 
         // 5.  Enviar respuesta exitosa
         res.status(201).json({
             success: true,
-            message: ' Ingreso creada exitosamente',
-            data: ingreso
+            message: ' Planilla creada exitosamente',
+            data: planilla, gasto
         });
 
     } catch (error) {
         // Manejar errores
-        console.error('Error creando ingreso:', error);
+        console.error('Error creando planilla:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 };
 
-//  ACTUALIZAR INGRESO EXISTENTE (UPDATE)
-// PUT /api/ingresos/:id
-const updateIngreso = async (req, res) => {
+//  ACTUALIZAR PLANILLA EXISTENTE (UPDATE)
+// PUT /api/planillas/:id
+const updatePlanilla = async (req, res) => {
     try {
-        // 1.  Obtener ID de la ingreso desde los parámetros de la URL
+        // 1.  Obtener ID de la planilla desde los parámetros de la URL
         const { id } = req.params;
 
         // 2.  Extraer nuevos datos del cuerpo de la petición
-        const { codigo_ingreso, fecha, descripcion, id_categoria, total } = req.body;
+        const { codigo_planilla, fecha, descripcion, id_categoria, total } = req.body;
 
-        // 3. Actualizar ingreso en la base de datos (solo si está activa)
-        const ingreso = await prisma.ingresos.update({
+        // 3. Actualizar planilla en la base de datos (solo si está activa)
+        const planilla = await prisma.planillas.update({
             where: {
                 id: BigInt(id),
-                id_estado: BigInt(1),  // Solo actualizar ingresos activas
+                id_estado: BigInt(1),  // Solo actualizar planillas activas
                 deleted_at: null       // Solo registros NO eliminados
             },
             data: {
-                codigo_ingreso,
+                codigo_planilla,
                 fecha,
                 descripcion,
+                id_categoria,
+                id_empleado,
+                total,
+                id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
+                id_usuario: userId,        // Usuario que creó el registro
+                updated_at: new Date(),    // Timestamp de última actualización
+            }
+        });
+
+        const gasto = await prisma.gastos.update({
+            where: {
+                id: BigInt(id),
+                id_estado: BigInt(1),  // Solo actualizar gastos activas
+                deleted_at: null       // Solo registros NO eliminados
+            },
+            data: {
+                codigo_gasto: planilla.codigo_planilla,
+                fecha,
+                descripcion: planilla.descripcion,
                 id_categoria,
                 total,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
@@ -192,43 +227,43 @@ const updateIngreso = async (req, res) => {
 
         // 4.  Enviar respuesta exitosa
         res.json({
-            message: 'Ingreso actualizado exitosamente',
-            data: ingreso
+            message: 'Planilla actualizado exitosamente',
+            data: planilla
         });
 
     } catch (error) {
         //  Manejar errores (incluye error P2025 si el ID no existe)
-        console.error('Error actualizando ingreso:', error);
+        console.error('Error actualizando planilla:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 };
 
-//  ELIMINAR INGRESO (SOFT DELETE)
-// DELETE /api/ingresos/:id - Compatible con soft delete de Laravel
-const deleteIngreso = async (req, res) => {
+//  ELIMINAR PLANILLA (SOFT DELETE)
+// DELETE /api/planillas/:id - Compatible con soft delete de Laravel
+const deletePlanilla = async (req, res) => {
     try {
-        // 1.  Obtener ID de la ingreso desde los parámetros de la URL
+        // 1.  Obtener ID de la planilla desde los parámetros de la URL
         const { id } = req.params;
 
-        console.log(' Soft delete de ingreso con ID:', id);
+        console.log(' Soft delete de planilla con ID:', id);
 
-        // 2.  Verificar que la ingreso existe y está activa
-        const ingresoExistente = await prisma.ingresos.findUnique({
+        // 2.  Verificar que la planilla existe y está activa
+        const planillaExistente = await prisma.planillas.findUnique({
             where: {
                 id: BigInt(id),
-                id_estado: BigInt(1)  // Solo buscar ingresos activas
+                id_estado: BigInt(1)  // Solo buscar planillas activas
             }
         });
 
-        if (!ingresoExistente) {
+        if (!planillaExistente) {
             return res.status(404).json({
                 success: false,
-                message: ' Ingreso no encontrada o ya está eliminada'
+                message: ' Planilla no encontrada o ya está eliminada'
             });
         }
 
         // 3.  SOFT DELETE: Cambiar estado a inactivo y marcar deleted_at
-        await prisma.ingresos.update({
+        await prisma.planillas.update({
             where: { id: BigInt(id) },
             data: {
                 id_estado: BigInt(2),        // Cambiar estado a inactivo/eliminado
@@ -237,17 +272,17 @@ const deleteIngreso = async (req, res) => {
             }
         });
 
-        console.log('Ingreso marcada como eliminada (soft delete)');
+        console.log('Planilla marcada como eliminada (soft delete)');
 
         // 4.  Enviar respuesta exitosa
         res.json({
             success: true,
-            message: ' Ingreso eliminada exitosamente'
+            message: ' Planilla eliminada exitosamente'
         });
 
     } catch (error) {
         //  Manejar errores (incluye error P2025 si el ID no existe)
-        console.error(' Error eliminando ingreso:', error);
+        console.error(' Error eliminando planilla:', error);
         res.status(500).json({
             success: false,
             message: ' Error interno del servidor'
@@ -259,9 +294,9 @@ const deleteIngreso = async (req, res) => {
 
 //  Exportar todas las funciones para usar en las rutas
 module.exports = {
-    getIngresos,    // GET /api/ingresos
-    createIngreso,  // POST /api/ingresos
-    updateIngreso,  // PUT /api/ingresos/:id
-    deleteIngreso,  // DELETE /api/ingresos/:id
-    getIngresoById  // GET /api/ingresos/:id
+    getPlanillas,    // GET /api/planillas
+    createPlanilla,  // POST /api/planillas
+    updatePlanilla,  // PUT /api/planillas/:id
+    deletePlanilla,  // DELETE /api/planillas/:id
+    getPlanillaById  // GET /api/planillas/:id
 };

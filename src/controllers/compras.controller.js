@@ -68,6 +68,51 @@ const getCompras = async (req, res) => {
   }
 };
 
+//  OBTENER COMPRA POR ID (READ)
+// GET /api/compras/:id
+const getCompraById = async (req, res) => {
+  try {
+    // 1.  Obtener ID de la compra desde los parámetros de la URL
+    const { id } = req.params;
+
+    console.log(' Buscando compra con ID:', id);
+
+    // 2. Buscar compra específica en la base de datos (solo activas)
+    const compra = await prisma.compras.findUnique({
+      where: { 
+        id: BigInt(id),
+        id_estado: BigInt(1),  // Solo compras activas
+        deleted_at: null       // Solo registros NO eliminados
+      }
+    });
+
+    // 3. Verificar si la compra existe
+    if (!compra) {
+      return res.status(404).json({
+        success: false,
+        message: ' Compra no encontrada'
+      });
+    }
+
+    // 4.  Enviar respuesta exitosa con los datos de la compra
+    res.json({
+      success: true,
+      message: ' Compra encontrada',
+      data: compra
+    });
+
+  } catch (error) {
+    //  Manejar errores (incluye error P2025 si el ID no existe)
+    console.error(' Error obteniendo compra:', error);
+    res.status(500).json({
+      success: false,
+      message: ' Error interno del servidor'
+    });
+  }
+};
+
+
+
 //  CREAR NUEVA COMPRA (CREATE)
 // POST /api/compras
 const createCompra = async (req, res) => {
@@ -226,48 +271,7 @@ const deleteCompra = async (req, res) => {
   }
 };
 
-// 🔍 OBTENER COMPRA POR ID (READ)
-// GET /api/compras/:id
-const getCompraById = async (req, res) => {
-  try {
-    // 1.  Obtener ID de la compra desde los parámetros de la URL
-    const { id } = req.params;
 
-    console.log(' Buscando compra con ID:', id);
-
-    // 2. Buscar compra específica en la base de datos (solo activas)
-    const compra = await prisma.compras.findUnique({
-      where: { 
-        id: BigInt(id),
-        id_estado: BigInt(1),  // Solo compras activas
-        deleted_at: null       // Solo registros NO eliminados
-      }
-    });
-
-    // 3. Verificar si la compra existe
-    if (!compra) {
-      return res.status(404).json({
-        success: false,
-        message: ' Compra no encontrada'
-      });
-    }
-
-    // 4.  Enviar respuesta exitosa con los datos de la compra
-    res.json({
-      success: true,
-      message: ' Compra encontrada',
-      data: compra
-    });
-
-  } catch (error) {
-    //  Manejar errores (incluye error P2025 si el ID no existe)
-    console.error(' Error obteniendo compra:', error);
-    res.status(500).json({
-      success: false,
-      message: ' Error interno del servidor'
-    });
-  }
-};
 
 //  Exportar todas las funciones para usar en las rutas
 module.exports = {

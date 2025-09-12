@@ -12,6 +12,9 @@ const rateLimit = require('express-rate-limit'); // Limita número de peticiones
 const authRoutes = require('./routes/auth.routes');         // Rutas de autenticación (/api/auth)
 const clientesRoutes = require('./routes/clientes.route');  // Rutas de clientes (/api/clientes)
 const comprasRoutes = require('./routes/compras.route');    // Rutas de compras (/api/compras)
+const gastosRoutes = require('./routes/gastos.route');      // Rutas de gastos (/api/gastos)
+const planillasRoutes = require('./routes/planillas.route');// Rutas de planillas (/api/planillas)  
+const ingresosRoutes = require('./routes/ingresos.route');// Rutas de ingresos (/api/ingresos)
 
 //  Importación de middlewares personalizados
 const errorHandler = require('./middlewares/errorHandler.middleware');  // Maneja errores globalmente
@@ -81,10 +84,10 @@ app.use('/api/auth', authRoutes);
 // Todas las rutas que empiecen con /api/clientes van al router de clientes
 // Ejemplo: GET /api/clientes -> va a clientesRoutes  
 app.use('/api/clientes', clientesRoutes);
-
-// Todas las rutas que empiecen con /api/compras van al router de compras
-// Ejemplo: GET /api/compras -> va a comprasRoutes
 app.use('/api/compras', comprasRoutes);
+app.use('/api/gastos', gastosRoutes);
+app.use('/api/planillas', planillasRoutes);
+app.use('/api/ingresos', ingresosRoutes);
 
 //  MANEJO DE RUTAS NO ENCONTRADAS (404)
 // Si ninguna ruta anterior coincide, ejecuta este middleware

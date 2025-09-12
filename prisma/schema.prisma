@@ -69,12 +69,13 @@ model cajas_movimientos {
 
 model cajas_sesiones {
   id                                             BigInt              @id @default(autoincrement())
+  fecha                                          DateTime            @db.Date
+  fecha_apertura                                 DateTime            @db.Timestamptz(0)
+  fecha_cierre                                   DateTime?           @db.Timestamptz(0)
   id_caja                                        BigInt?
   caja_efectivo_inicial                          Float
   caja_efectivo_final                            Float?
   diferencia                                     Float?
-  fecha_apertura                                 DateTime            @db.Timestamptz(0)
-  fecha_cierre                                   DateTime?           @db.Timestamptz(0)
   venta_efectivo                                 Float
   venta_tarjeta                                  Float
   venta_transferencia                            Float
@@ -152,6 +153,7 @@ model categorias_gastos {
   tipos_gastos tipos_gastos? @relation(fields: [id_tipo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_gastos_id_tipo_foreign")
   users        users?        @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_gastos_id_usuario_foreign")
   gastos       gastos[]
+  planillas    planillas[]
 }
 
 model categorias_ingresos {
@@ -180,6 +182,20 @@ model categorias_movimientos {
   cajas_movimientos cajas_movimientos[]
   estados           estados?            @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_movimientos_id_estado_foreign")
   users             users?              @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_movimientos_id_usuario_foreign")
+}
+
+model categorias_planillas {
+  id              BigInt           @id @default(autoincrement())
+  descripcion     String           @db.VarChar(255)
+  id_tipo         BigInt?
+  id_estado       BigInt?
+  id_usuario      BigInt?
+  created_at      DateTime?        @db.Timestamp(0)
+  updated_at      DateTime?        @db.Timestamp(0)
+  deleted_at      DateTime?        @db.Timestamp(0)
+  estados         estados?         @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_planillas_id_estado_foreign")
+  tipos_planillas tipos_planillas? @relation(fields: [id_tipo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_planillas_id_tipo_foreign")
+  users           users?           @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_planillas_id_usuario_foreign")
 }
 
 model categorias_productos {
@@ -414,6 +430,7 @@ model estados {
   categorias_gastos       categorias_gastos[]
   categorias_ingresos     categorias_ingresos[]
   categorias_movimientos  categorias_movimientos[]
+  categorias_planillas    categorias_planillas[]
   categorias_productos    categorias_productos[]
   clientes                clientes[]
   compra_detalles         compra_detalles[]
@@ -542,8 +559,9 @@ model impuestos {
 
 model ingresos {
   id                  BigInt               @id @default(autoincrement())
-  descripcion         String               @db.VarChar(255)
+  codigo_ingreso      String               @unique(map: "ingresos_codigo_ingreso_unique") @db.VarChar(255)
   fecha               DateTime             @db.Date
+  descripcion         String               @db.VarChar(255)
   id_categoria        BigInt?
   total               Float
   id_estado           BigInt?
@@ -637,20 +655,23 @@ model personal_access_tokens {
 }
 
 model planillas {
-  id              BigInt            @id @default(autoincrement())
-  descripcion     String            @db.VarChar(255)
-  fecha           DateTime          @db.Date
-  id_empleado     BigInt?
-  total           Float
-  id_estado       BigInt?
-  id_usuario      BigInt?
-  created_at      DateTime?         @db.Timestamp(0)
-  updated_at      DateTime?         @db.Timestamp(0)
-  deleted_at      DateTime?         @db.Timestamp(0)
-  gasto_planillas gasto_planillas[]
-  empleados       empleados?        @relation(fields: [id_empleado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_empleado_foreign")
-  estados         estados?          @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_estado_foreign")
-  users           users?            @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_usuario_foreign")
+  id                BigInt             @id @default(autoincrement())
+  codigo_planilla   String             @db.VarChar(255)
+  fecha             DateTime           @db.Date
+  descripcion       String             @db.VarChar(255)
+  id_categoria      BigInt?
+  id_empleado       BigInt?
+  total             Float
+  id_estado         BigInt?
+  id_usuario        BigInt?
+  created_at        DateTime?          @db.Timestamp(0)
+  updated_at        DateTime?          @db.Timestamp(0)
+  deleted_at        DateTime?          @db.Timestamp(0)
+  gasto_planillas   gasto_planillas[]
+  categorias_gastos categorias_gastos? @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_categoria_foreign")
+  empleados         empleados?         @relation(fields: [id_empleado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_empleado_foreign")
+  estados           estados?           @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_estado_foreign")
+  users             users?             @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_usuario_foreign")
 }
 
 model producto_multimedias {
@@ -794,13 +815,14 @@ model tipos_operaciones {
 }
 
 model tipos_planillas {
-  id          BigInt    @id @default(autoincrement())
-  descripcion String    @db.VarChar(255)
-  id_estado   BigInt?
-  created_at  DateTime? @db.Timestamp(0)
-  updated_at  DateTime? @db.Timestamp(0)
-  deleted_at  DateTime? @db.Timestamp(0)
-  estados     estados?  @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tipos_planillas_id_estado_foreign")
+  id                   BigInt                 @id @default(autoincrement())
+  descripcion          String                 @db.VarChar(255)
+  id_estado            BigInt?
+  created_at           DateTime?              @db.Timestamp(0)
+  updated_at           DateTime?              @db.Timestamp(0)
+  deleted_at           DateTime?              @db.Timestamp(0)
+  categorias_planillas categorias_planillas[]
+  estados              estados?               @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tipos_planillas_id_estado_foreign")
 }
 
 model users {
@@ -823,6 +845,7 @@ model users {
   categorias_gastos                                       categorias_gastos[]
   categorias_ingresos                                     categorias_ingresos[]
   categorias_movimientos                                  categorias_movimientos[]
+  categorias_planillas                                    categorias_planillas[]
   categorias_productos                                    categorias_productos[]
   clientes                                                clientes[]
   compra_detalles                                         compra_detalles[]
@@ -848,6 +871,7 @@ model users {
 model ventas {
   id                BigInt             @id @default(autoincrement())
   fecha             DateTime           @db.Timestamptz(0)
+  codigo_venta      String             @db.VarChar(255)
   total             Float
   id_movimiento     BigInt?
   id_comprobante    BigInt?
