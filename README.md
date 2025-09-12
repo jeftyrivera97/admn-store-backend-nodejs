@@ -1,4 +1,4 @@
-# 🏪 Souvenir Backend
+# 🏪 Store Backend
 
 Sistema backend completo para gestión de sistema de Ingreso y Egresos de una tienda de venta de productos varios con operaciones CRUD, autenticación JWT, soft delete y API RESTful.
 
