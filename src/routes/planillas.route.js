@@ -34,10 +34,10 @@ const planillaValidation = [
         .notEmpty()
         .withMessage('Categoría es requerida'),
 
-    // Proveedor es obligatorio
+    // Descripción es obligatoria
     body('descripcion')
         .notEmpty()
-        .withMessage('Proveedor es requerido'),
+        .withMessage('Descripción es requerida'),
     // Total es obligatorio
     body('total')
         .notEmpty()

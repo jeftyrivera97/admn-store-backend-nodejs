@@ -16,7 +16,7 @@ const {
 // Crear router para agrupar rutas de ingresos
 const router = express.Router();
 
-//  VALIDACIONES PARA GASTO
+//  VALIDACIONES PARA INGRESO
 // Reglas que deben cumplir los datos al crear o actualizar un ingreso
 const ingresoValidation = [
     // Código de ingreso es obligatorio
@@ -34,10 +34,10 @@ const ingresoValidation = [
         .notEmpty()
         .withMessage('Categoría es requerida'),
 
-    // Proveedor es obligatorio
+    // Descripción es obligatoria
     body('descripcion')
         .notEmpty()
-        .withMessage('Proveedor es requerido'),
+        .withMessage('Descripción es requerida'),
     // Total es obligatorio
     body('total')
         .notEmpty()

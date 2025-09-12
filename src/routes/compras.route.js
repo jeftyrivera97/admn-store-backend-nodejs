@@ -10,7 +10,8 @@ const {
     createCompra,   // Crear nueva compra
     updateCompra,   // Actualizar compra existente
     deleteCompra,   // DELETE /api/compras/:id
-    getCompraById   // GET /api/compras/:id
+    getCompraById,  // GET /api/compras/:id
+    createCompraDetalle // POST /api/compras/:id/detalles
 } = require('../controllers/compras.controller');
 
 // Crear router para agrupar rutas de compras
@@ -92,6 +93,9 @@ router.put('/:id', compraValidation, updateCompra);
 
 // DELETE /api/compras/:id - Eliminar compra por ID
 router.delete('/:id', deleteCompra);
+
+// POST /api/compras/:id/detalles - Crear detalle de compra específica
+router.post('/:id/detalles', createCompraDetalle);
 
 // 📤 Exportar router
 module.exports = router;

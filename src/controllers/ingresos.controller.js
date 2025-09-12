@@ -41,7 +41,11 @@ const getIngresos = async (req, res) => {
                 where: whereCondition,
                 skip: parseInt(skip),           // Saltar registros para paginación
                 take: parseInt(limit),          // Limitar cantidad de resultados
-                orderBy: { created_at: 'desc' } // Ordenar por fecha de creación (más recientes primero)
+                orderBy: { created_at: 'desc' }, // Ordenar por fecha de creación (más recientes primero)
+                include: {
+                    categorias_ingresos: true,
+                    estados: true,
+                }
             }),
 
             // Contar total de registros que coinciden con los filtros
@@ -83,6 +87,10 @@ const getIngresoById = async (req, res) => {
                 id: BigInt(id),
                 id_estado: BigInt(1),  // Solo ingresos activas
                 deleted_at: null       // Solo registros NO eliminados
+            },
+            include: {
+                categorias_ingresos: true,
+                estados: true,
             }
         });
 
@@ -139,7 +147,6 @@ const createIngreso = async (req, res) => {
                 id_categoria,
                 total,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
-                id_usuario: userId,        // Usuario que creó el registro
                 created_at: new Date(),    // Timestamp de creación
                 updated_at: new Date(),     // Timestamp de última actualización
             }
@@ -185,7 +192,6 @@ const updateIngreso = async (req, res) => {
                 id_categoria,
                 total,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
-                id_usuario: userId,        // Usuario que creó el registro
                 updated_at: new Date(),    // Timestamp de última actualización
             }
         });

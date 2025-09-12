@@ -41,7 +41,11 @@ const getPlanillas = async (req, res) => {
                 where: whereCondition,
                 skip: parseInt(skip),           // Saltar registros para paginación
                 take: parseInt(limit),          // Limitar cantidad de resultados
-                orderBy: { created_at: 'desc' } // Ordenar por fecha de creación (más recientes primero)
+                orderBy: { created_at: 'desc' }, // Ordenar por fecha de creación (más recientes primero)
+                include: {
+                    categorias_planillas: true,
+                    estados: true,
+                }
             }),
 
             // Contar total de registros que coinciden con los filtros
@@ -83,7 +87,11 @@ const getPlanillaById = async (req, res) => {
                 id: BigInt(id),
                 id_estado: BigInt(1),  // Solo planillas activas
                 deleted_at: null       // Solo registros NO eliminados
-            }
+            },
+             include: {
+                    categorias_planillas: true,
+                    estados: true,
+                }
         });
 
         // 3. Verificar si la planilla existe
@@ -140,7 +148,6 @@ const createPlanilla = async (req, res) => {
                 id_empleado,
                 total,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
-                id_usuario: userId,        // Usuario que creó el registro
                 created_at: new Date(),    // Timestamp de creación
                 updated_at: new Date(),     // Timestamp de última actualización
             }
@@ -155,7 +162,6 @@ const createPlanilla = async (req, res) => {
                 id_categoria,
                 total,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
-                id_usuario: userId,        // Usuario que creó el registro
                 created_at: new Date(),    // Timestamp de creación
                 updated_at: new Date(),     // Timestamp de última actualización
             }
@@ -202,7 +208,6 @@ const updatePlanilla = async (req, res) => {
                 id_empleado,
                 total,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
-                id_usuario: userId,        // Usuario que creó el registro
                 updated_at: new Date(),    // Timestamp de última actualización
             }
         });
@@ -220,7 +225,6 @@ const updatePlanilla = async (req, res) => {
                 id_categoria,
                 total,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
-                id_usuario: userId,        // Usuario que creó el registro
                 updated_at: new Date(),    // Timestamp de última actualización
             }
         });

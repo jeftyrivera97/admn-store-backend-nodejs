@@ -41,7 +41,15 @@ const getCompras = async (req, res) => {
         where: whereCondition,
         skip: parseInt(skip),           // Saltar registros para paginación
         take: parseInt(limit),          // Limitar cantidad de resultados
-        orderBy: { created_at: 'desc' } // Ordenar por fecha de creación (más recientes primero)
+        orderBy: { created_at: 'desc' }, // Ordenar por fecha de creación (más recientes primero)
+        include: {
+        categorias_compras: true,
+        proveedores: true,
+        tipos_operaciones: true,
+        estados_operaciones: true,
+        users: true,
+        compra_detalles: { include: { productos: true } }  // Incluir detalles y productos relacionados
+      }
       }),
 
       // Contar total de registros que coinciden con los filtros
@@ -83,6 +91,13 @@ const getCompraById = async (req, res) => {
         id: BigInt(id),
         id_estado: BigInt(1),  // Solo compras activas
         deleted_at: null       // Solo registros NO eliminados
+      },
+      include: {
+        categorias_compras: true,
+        proveedores: true,
+        tipos_operaciones: true,
+        estados_operaciones: true,
+        compra_detalles: { include: { productos: true } }  // Incluir detalles y productos relacionados
       }
     });
 
@@ -168,6 +183,60 @@ const createCompra = async (req, res) => {
   } catch (error) {
     // Manejar errores
     console.error('Error creando compra:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+//  CREAR DETALLE DE COMPRA (CREATE)
+// POST /api/compras/:id/detalles
+const createCompraDetalle = async (req, res) => {
+  try {
+    // 1.  Verificar que las validaciones pasaron
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // 2.  Obtener ID de la compra desde los parámetros de la URL
+    const { id } = req.params;
+    
+    // 3.  Extraer datos del cuerpo de la petición
+    const { items } = req.body;
+
+    // 4.  Obtener ID del usuario autenticado desde el token JWT
+    const userId = BigInt(req.user.userId);
+    
+    // 5. Crear detalles usando Promise.all para mejor manejo de errores
+    const detallesCreados = await Promise.all(
+      items.map(async (element, index) => {
+        return await prisma.compra_detalles.create({
+          data: {
+            linea: index + 1,  // Línea automática: 1, 2, 3, 4...
+            id_compra: BigInt(id),  // ID de la URL
+            id_producto: BigInt(element.id_producto),
+            cantidad: element.cantidad,
+            costo: element.costo,
+            total_linea: element.total_linea,
+            id_estado: BigInt(1),
+            id_usuario: userId,
+            created_at: new Date(),
+            updated_at: new Date()
+          }
+        });
+      })
+    );
+
+    console.log('✅ Detalles de Compra creados exitosamente para compra:', id);
+
+    // 6.  Enviar respuesta exitosa
+    res.status(201).json({
+      success: true,
+      message: `✅ ${detallesCreados.length} detalles de compra creados exitosamente`,
+      data: detallesCreados
+    });
+
+  } catch (error) {
+    console.error('Error creando detalle de Compra:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
@@ -279,5 +348,6 @@ module.exports = {
   createCompra,  // POST /api/compras
   updateCompra,  // PUT /api/compras/:id
   deleteCompra,  // DELETE /api/compras/:id
-  getCompraById  // GET /api/compras/:id
+  getCompraById, // GET /api/compras/:id
+  createCompraDetalle // POST /api/compras/detalles
 };

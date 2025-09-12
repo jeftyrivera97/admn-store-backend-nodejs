@@ -153,7 +153,6 @@ model categorias_gastos {
   tipos_gastos tipos_gastos? @relation(fields: [id_tipo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_gastos_id_tipo_foreign")
   users        users?        @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_gastos_id_usuario_foreign")
   gastos       gastos[]
-  planillas    planillas[]
 }
 
 model categorias_ingresos {
@@ -196,6 +195,7 @@ model categorias_planillas {
   estados         estados?         @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_planillas_id_estado_foreign")
   tipos_planillas tipos_planillas? @relation(fields: [id_tipo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_planillas_id_tipo_foreign")
   users           users?           @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "categorias_planillas_id_usuario_foreign")
+  planillas       planillas[]
 }
 
 model categorias_productos {
@@ -655,23 +655,23 @@ model personal_access_tokens {
 }
 
 model planillas {
-  id                BigInt             @id @default(autoincrement())
-  codigo_planilla   String             @db.VarChar(255)
-  fecha             DateTime           @db.Date
-  descripcion       String             @db.VarChar(255)
-  id_categoria      BigInt?
-  id_empleado       BigInt?
-  total             Float
-  id_estado         BigInt?
-  id_usuario        BigInt?
-  created_at        DateTime?          @db.Timestamp(0)
-  updated_at        DateTime?          @db.Timestamp(0)
-  deleted_at        DateTime?          @db.Timestamp(0)
-  gasto_planillas   gasto_planillas[]
-  categorias_gastos categorias_gastos? @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_categoria_foreign")
-  empleados         empleados?         @relation(fields: [id_empleado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_empleado_foreign")
-  estados           estados?           @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_estado_foreign")
-  users             users?             @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_usuario_foreign")
+  id                   BigInt                @id @default(autoincrement())
+  codigo_planilla      String                @db.VarChar(255)
+  fecha                DateTime              @db.Date
+  descripcion          String                @db.VarChar(255)
+  id_categoria         BigInt?
+  id_empleado          BigInt?
+  total                Float
+  id_estado            BigInt?
+  id_usuario           BigInt?
+  created_at           DateTime?             @db.Timestamp(0)
+  updated_at           DateTime?             @db.Timestamp(0)
+  deleted_at           DateTime?             @db.Timestamp(0)
+  gasto_planillas      gasto_planillas[]
+  categorias_planillas categorias_planillas? @relation(fields: [id_categoria], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_categoria_foreign")
+  empleados            empleados?            @relation(fields: [id_empleado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_empleado_foreign")
+  estados              estados?              @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_estado_foreign")
+  users                users?                @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planillas_id_usuario_foreign")
 }
 
 model producto_multimedias {

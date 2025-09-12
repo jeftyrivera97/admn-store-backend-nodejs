@@ -15,6 +15,11 @@ const comprasRoutes = require('./routes/compras.route');    // Rutas de compras 
 const gastosRoutes = require('./routes/gastos.route');      // Rutas de gastos (/api/gastos)
 const planillasRoutes = require('./routes/planillas.route');// Rutas de planillas (/api/planillas)  
 const ingresosRoutes = require('./routes/ingresos.route');// Rutas de ingresos (/api/ingresos)
+const sesionesRoutes = require('./routes/sesiones.route');// Rutas de sesiones (/api/sesiones)
+const comprobantesRoutes = require('./routes/comprobantes.route');// Rutas de comprobantes (/api/comprobantes)
+const ventasRoutes = require('./routes/ventas.routes');// Rutas de ventas (/api/ventas)
+const empleadosRoutes = require('./routes/empleados.route');// Rutas de empleados (/api/empleados)
+const proveedoresRoutes = require('./routes/proveedores.route');// Rutas de proveedores (/api/proveedores)
 
 //  Importación de middlewares personalizados
 const errorHandler = require('./middlewares/errorHandler.middleware');  // Maneja errores globalmente
@@ -88,6 +93,11 @@ app.use('/api/compras', comprasRoutes);
 app.use('/api/gastos', gastosRoutes);
 app.use('/api/planillas', planillasRoutes);
 app.use('/api/ingresos', ingresosRoutes);
+app.use('/api/sesiones', sesionesRoutes);
+app.use('/api/comprobantes', comprobantesRoutes);
+app.use('/api/ventas', ventasRoutes);
+app.use('/api/empleados', empleadosRoutes);
+app.use('/api/proveedores', proveedoresRoutes);
 
 //  MANEJO DE RUTAS NO ENCONTRADAS (404)
 // Si ninguna ruta anterior coincide, ejecuta este middleware
