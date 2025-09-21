@@ -71,6 +71,7 @@ const register = async (req, res) => {
     res.status(201).json({
       message: 'Usuario creado exitosamente',
       token,
+      expiresIn: process.env.JWT_EXPIRES_IN,
       user: {
         id: user.id.toString(),  // Convertir BigInt a string
         email: user.email,
@@ -119,13 +120,14 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // 5. 🎟️ Si las credenciales son correctas, generar token JWT
+    // 5. Si las credenciales son correctas, generar token JWT
     const token = generateToken(user.id);
 
     // 6.  Enviar respuesta exitosa con token y datos del usuario
     res.json({
       message: 'Login exitoso',
       token,
+      expiresIn: process.env.JWT_EXPIRES_IN,
       user: {
         id: user.id.toString(),  // Convertir BigInt a string
         email: user.email,

@@ -45,6 +45,7 @@ const getPlanillas = async (req, res) => {
                 include: {
                     categorias_planillas: true,
                     estados: true,
+                    empleados: true,
                 }
             }),
 
@@ -91,6 +92,7 @@ const getPlanillaById = async (req, res) => {
              include: {
                     categorias_planillas: true,
                     estados: true,
+                      empleados: true,
                 }
         });
 
@@ -130,14 +132,12 @@ const createPlanilla = async (req, res) => {
         }
 
         // 2.  Extraer datos del cuerpo de la petición
-        const { codigo_planilla, fecha, descripcion, id_categoria, total } = req.body;
+        const { codigo_planilla,id_empleado, fecha, descripcion, id_categoria, total } = req.body;
 
         // 3.  Obtener ID del usuario autenticado desde el token JWT
         // req.user fue establecido por authMiddleware
         const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
-        const id_estado_operacion = id_tipo_operacion == 1 ? BigInt(1) : BigInt(2); // Si es de contado (1) si es credito es 2
-
-
+       
         // 4. Crear planilla en la base de datos
         const planilla = await prisma.planillas.create({
             data: {
@@ -147,7 +147,8 @@ const createPlanilla = async (req, res) => {
                 id_categoria,
                 id_empleado,
                 total,
-                id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
+                id_estado: BigInt(1), 
+                id_usuario: userId,     // Estado activo por defecto (asumir que 1 = activo)  
                 created_at: new Date(),    // Timestamp de creación
                 updated_at: new Date(),     // Timestamp de última actualización
             }
@@ -158,10 +159,11 @@ const createPlanilla = async (req, res) => {
             data: {
                 codigo_gasto: planilla.codigo_planilla, // Usar mismo código que la planilla
                 fecha,
-                descripcion: planilla.descripcion,
+                descripcion: `Pago de planilla: ${planilla.descripcion}`,
                 id_categoria,
                 total,
-                id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
+                id_estado: BigInt(1),
+                id_usuario: userId,       // Estado activo por defecto (asumir que 1 = activo)  
                 created_at: new Date(),    // Timestamp de creación
                 updated_at: new Date(),     // Timestamp de última actualización
             }
@@ -191,7 +193,11 @@ const updatePlanilla = async (req, res) => {
         const { id } = req.params;
 
         // 2.  Extraer nuevos datos del cuerpo de la petición
-        const { codigo_planilla, fecha, descripcion, id_categoria, total } = req.body;
+        const { codigo_planilla, id_empleado, fecha, descripcion, id_categoria, total } = req.body;
+
+          // 3.  Obtener ID del usuario autenticado desde el token JWT
+        // req.user fue establecido por authMiddleware
+        const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
 
         // 3. Actualizar planilla en la base de datos (solo si está activa)
         const planilla = await prisma.planillas.update({
@@ -207,6 +213,7 @@ const updatePlanilla = async (req, res) => {
                 id_categoria,
                 id_empleado,
                 total,
+                id_usuario: userId,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
                 updated_at: new Date(),    // Timestamp de última actualización
             }
@@ -224,7 +231,8 @@ const updatePlanilla = async (req, res) => {
                 descripcion: planilla.descripcion,
                 id_categoria,
                 total,
-                id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
+                id_estado: BigInt(1),
+                id_usuario: userId,     // Estado activo por defecto (asumir que 1 = activo)
                 updated_at: new Date(),    // Timestamp de última actualización
             }
         });

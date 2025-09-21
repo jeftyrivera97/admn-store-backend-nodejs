@@ -135,7 +135,7 @@ const createGasto = async (req, res) => {
         // 3.  Obtener ID del usuario autenticado desde el token JWT
         // req.user fue establecido por authMiddleware
         const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
-        const id_estado_operacion = id_tipo_operacion == 1 ? BigInt(1) : BigInt(2); // Si es de contado (1) si es credito es 2
+
 
 
         // 4. Crear gasto en la base de datos

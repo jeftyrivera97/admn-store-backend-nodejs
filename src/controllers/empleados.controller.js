@@ -133,10 +133,11 @@ const createEmpleado = async (req, res) => {
 
         // 2.  Extraer datos del cuerpo de la petición
         const { codigo_empleado,
-            descripcion,
+            nombre,
+            apellido,
             id_categoria,
             id_area,
-            telefono, } = req.body;
+            telefono } = req.body;
 
         // 3.  Obtener ID del usuario autenticado desde el token JWT
         // req.user fue establecido por authMiddleware
@@ -146,7 +147,8 @@ const createEmpleado = async (req, res) => {
         const empleado = await prisma.empleados.create({
             data: {
                 codigo_empleado,
-                descripcion,
+                nombre,
+                apellido,
                 id_categoria,
                 id_area,
                 telefono,
@@ -182,7 +184,8 @@ const updateEmpleado = async (req, res) => {
 
         // 2.  Extraer nuevos datos del cuerpo de la petición
         const { codigo_empleado,
-            descripcion,
+            nombre,
+            apellido,
             id_categoria,
             id_area,
             telefono, } = req.body;
@@ -199,7 +202,8 @@ const updateEmpleado = async (req, res) => {
             },
             data: {
                 codigo_empleado,
-                descripcion,
+                nombre,
+                apellido,
                 id_categoria,
                 id_area,
                 telefono,

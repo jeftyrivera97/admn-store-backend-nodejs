@@ -10,16 +10,25 @@ const rateLimit = require('express-rate-limit'); // Limita número de peticiones
 
 //  Importación de rutas (endpoints de la API)
 const authRoutes = require('./routes/auth.routes');         // Rutas de autenticación (/api/auth)
-const clientesRoutes = require('./routes/clientes.route');  // Rutas de clientes (/api/clientes)
-const comprasRoutes = require('./routes/compras.route');    // Rutas de compras (/api/compras)
-const gastosRoutes = require('./routes/gastos.route');      // Rutas de gastos (/api/gastos)
-const planillasRoutes = require('./routes/planillas.route');// Rutas de planillas (/api/planillas)  
-const ingresosRoutes = require('./routes/ingresos.route');// Rutas de ingresos (/api/ingresos)
-const sesionesRoutes = require('./routes/sesiones.route');// Rutas de sesiones (/api/sesiones)
-const comprobantesRoutes = require('./routes/comprobantes.route');// Rutas de comprobantes (/api/comprobantes)
+const clientesRoutes = require('./routes/clientes.routes');  // Rutas de clientes (/api/clientes)
+const comprasRoutes = require('./routes/compras.routes');    // Rutas de compras (/api/compras)
+const gastosRoutes = require('./routes/gastos.routes');      // Rutas de gastos (/api/gastos)
+const planillasRoutes = require('./routes/planillas.routes');// Rutas de planillas (/api/planillas)  
+const ingresosRoutes = require('./routes/ingresos.routes');// Rutas de ingresos (/api/ingresos)
+const sesionesRoutes = require('./routes/sesiones.routes');// Rutas de sesiones (/api/sesiones)
+const comprobantesRoutes = require('./routes/comprobantes.routes');// Rutas de comprobantes (/api/comprobantes)
 const ventasRoutes = require('./routes/ventas.routes');// Rutas de ventas (/api/ventas)
-const empleadosRoutes = require('./routes/empleados.route');// Rutas de empleados (/api/empleados)
-const proveedoresRoutes = require('./routes/proveedores.route');// Rutas de proveedores (/api/proveedores)
+const empleadosRoutes = require('./routes/empleados.routes');// Rutas de empleados (/api/empleados)
+const proveedoresRoutes = require('./routes/proveedores.routes');// Rutas de proveedores (/api/proveedores)
+const tiposOperacionesRoutes = require('./routes/tipos-operaciones.routes');// Rutas de tipos operaciones (/api/categorias/tiposOperaciones)
+const categoriasComprasRoutes = require('./routes/categorias-compras.routes');// Rutas de categorias compras (/api/categorias/compras)
+const categoriasGastosRoutes = require('./routes/categorias-gastos.routes');// Rutas de categorias gastos (/api/categorias/gastos)
+const categoriasIngresosRoutes = require('./routes/categorias-ingresos.routes');// Rutas de categorias ingresos (/api/categorias/ingresos)
+const categoriasPlanillasRoutes = require('./routes/categorias-planillas.routes');// Rutas de categorias planillas (/api/categorias/planillas)
+const categoriasEmpleadosRoutes = require('./routes/categorias-empleados.routes');// Rutas de categorias empleados (/api/categorias/empleados)  
+const areasEmpleadosRoutes = require('./routes/areas-empleados.routes');// Rutas de areas empleados (/api/areasEmpleados)
+
+
 
 //  Importación de middlewares personalizados
 const errorHandler = require('./middlewares/errorHandler.middleware');  // Maneja errores globalmente
@@ -98,6 +107,15 @@ app.use('/api/comprobantes', comprobantesRoutes);
 app.use('/api/ventas', ventasRoutes);
 app.use('/api/empleados', empleadosRoutes);
 app.use('/api/proveedores', proveedoresRoutes);
+
+app.use('/api/tiposOperaciones', tiposOperacionesRoutes);
+
+app.use('/api/categorias', categoriasComprasRoutes);
+app.use('/api/categorias', categoriasGastosRoutes);
+app.use('/api/categorias', categoriasIngresosRoutes);
+app.use('/api/categorias', categoriasPlanillasRoutes);
+app.use('/api/categorias', categoriasEmpleadosRoutes);
+app.use('/api/areas', areasEmpleadosRoutes);
 
 //  MANEJO DE RUTAS NO ENCONTRADAS (404)
 // Si ninguna ruta anterior coincide, ejecuta este middleware

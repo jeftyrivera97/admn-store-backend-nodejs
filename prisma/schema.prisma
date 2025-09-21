@@ -218,7 +218,9 @@ model categorias_productos {
 model clientes {
   id             BigInt         @id @default(autoincrement())
   codigo_cliente String         @db.VarChar(255)
-  descripcion    String         @db.VarChar(255)
+  razon_social   String?        @db.VarChar(255)
+  nombre         String?        @db.VarChar(255)
+  apellido       String?        @db.VarChar(255)
   direccion      String?        @db.VarChar(255)
   telefono       String?        @db.VarChar(255)
   id_estado      BigInt?
@@ -379,7 +381,8 @@ model currency_exchange {
 model empleados {
   id                   BigInt                @id @default(autoincrement())
   codigo_empleado      String                @db.VarChar(255)
-  descripcion          String                @db.VarChar(255)
+  nombre               String                @db.VarChar(255)
+  apellido             String                @db.VarChar(255)
   id_categoria         BigInt?
   id_area              BigInt?
   telefono             String                @db.VarChar(255)

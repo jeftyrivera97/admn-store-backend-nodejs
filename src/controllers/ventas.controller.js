@@ -138,7 +138,7 @@ const createVenta = async (req, res) => {
         // 3.  Obtener ID del usuario autenticado desde el token JWT
         // req.user fue establecido por authMiddleware
         const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
-        const id_estado_operacion = id_tipo_operacion == 1 ? BigInt(1) : BigInt(2); // Si es de contado (1) si es credito es 2
+      
 
 
         // 4. Crear venta en la base de datos
@@ -149,7 +149,8 @@ const createVenta = async (req, res) => {
                 total,
                 id_movimiento,
                 id_comprobante,
-                id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
+                id_estado: BigInt(1),
+                id_usuario: userId,      // Estado activo por defecto (asumir que 1 = activo)
                 created_at: new Date(),    // Timestamp de creación
                 updated_at: new Date(),     // Timestamp de última actualización
             }

@@ -74,7 +74,7 @@ const createCliente = async (req, res) => {
     }
 
     // 2.  Extraer datos del cuerpo de la petición
-    const { codigo_cliente, descripcion, direccion, telefono } = req.body;
+    const { codigo_cliente, razon_social, nombre, apellido, direccion, telefono } = req.body;
     
     // 3.  Obtener ID del usuario autenticado desde el token JWT
     // req.user fue establecido por authMiddleware
@@ -84,7 +84,9 @@ const createCliente = async (req, res) => {
     const cliente = await prisma.clientes.create({
       data: {
         codigo_cliente,
-        descripcion,
+        razon_social,
+        nombre,
+        apellido,
         direccion,
         telefono,
         id_usuario: userId,        // Usuario que creó el registro
@@ -113,14 +115,16 @@ const updateCliente = async (req, res) => {
     const { id } = req.params;
     
     // 2.  Extraer nuevos datos del cuerpo de la petición
-    const { codigo_cliente, descripcion, direccion, telefono } = req.body;
+    const { codigo_cliente, razon_social, nombre, apellido, direccion, telefono } = req.body;
 
     // 3.  Actualizar cliente en la base de datos
     const cliente = await prisma.clientes.update({
       where: { id: BigInt(id) },  // Buscar por ID (convertir string a BigInt)
       data: {
         codigo_cliente,
-        descripcion,
+        razon_social,
+        nombre,
+        apellido,
         direccion,
         telefono,
         updated_at: new Date()    // Actualizar timestamp de modificación

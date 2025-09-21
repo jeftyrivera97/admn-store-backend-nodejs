@@ -120,7 +120,7 @@ const getCompraById = async (req, res) => {
     //  Manejar errores (incluye error P2025 si el ID no existe)
     console.error(' Error obteniendo compra:', error);
     res.status(500).json({
-      success: false,
+      success: false, 
       message: ' Error interno del servidor'
     });
   }
@@ -144,30 +144,43 @@ const createCompra = async (req, res) => {
     // 3.  Obtener ID del usuario autenticado desde el token JWT
     // req.user fue establecido por authMiddleware
     const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
-    const id_estado_operacion = id_tipo_operacion == 1 ? BigInt(1) : BigInt(2); // Si es de contado (1) si es credito es 2
 
+    // Normalizar tipos para Prisma
+    const id_categoriaBI = id_categoria ? BigInt(id_categoria) : null;
+    const id_proveedorBI = id_proveedor ? BigInt(id_proveedor) : null;
+    const id_tipo_operacionBI = id_tipo_operacion ? BigInt(id_tipo_operacion) : null
+    const gravado15Num = gravado15 !== undefined && gravado15 !== '' ? parseFloat(gravado15) : null;
+    const gravado18Num = gravado18 !== undefined && gravado18 !== '' ? parseFloat(gravado18) : null;
+    const impuesto15Num = impuesto15 !== undefined && impuesto15 !== '' ? parseFloat(impuesto15) : null;
+    const impuesto18Num = impuesto18 !== undefined && impuesto18 !== '' ? parseFloat(impuesto18) : null;
+    const exentoNum = exento !== undefined && exento !== '' ? parseFloat(exento) : null;
+    const exoneradoNum = exonerado !== undefined && exonerado !== '' ? parseFloat(exonerado) : null;
+    const totalNum = total !== undefined && total !== '' ? parseFloat(total) : null;
+
+    // Determinar estado de operación en BigInt
+    const id_estado_operacion = id_tipo_operacionBI === 1n ? 1n : 2n;
 
     // 4. Crear compra en la base de datos
     const compra = await prisma.compras.create({
       data: {
         codigo_compra,
-        fecha,
-        id_categoria,
-        id_proveedor,
-        id_tipo_operacion,
+        fecha: fecha,
+        id_categoria: id_categoriaBI,
+        id_proveedor: id_proveedorBI,
+        id_tipo_operacion: id_tipo_operacionBI,
         id_estado_operacion,
-        fecha_pago: fecha_pago || null,
-        gravado15,
-        gravado18,
-        impuesto15,
-        impuesto18,
-        exento,
-        exonerado,
-        total,
-        id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
-        id_usuario: userId,        // Usuario que creó el registro
-        created_at: new Date(),    // Timestamp de creación
-        updated_at: new Date(),     // Timestamp de última actualización
+        fecha_pago: fecha_pago ? fecha_pago : fecha, // Permitir null si no se proporciona
+        gravado15: gravado15Num,
+        gravado18: gravado18Num,
+        impuesto15: impuesto15Num,
+        impuesto18: impuesto18Num,
+        exento: exentoNum,
+        exonerado: exoneradoNum,
+        total: totalNum,
+        id_estado: BigInt(1),
+        id_usuario: userId,
+        created_at: new Date(),
+        updated_at: new Date(),
       }
     });
 

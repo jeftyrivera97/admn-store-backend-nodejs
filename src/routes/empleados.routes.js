@@ -34,10 +34,15 @@ const empleadoValidation = [
         .notEmpty()
         .withMessage('Área es requerida'),
 
-    // Descripción es obligatoria
-    body('descripcion')
+
+    body('nombre')
         .notEmpty()
-        .withMessage('Descripción es requerida'),
+        .withMessage('Nombre es requerido'),
+
+    // Apellido es obligatorio
+    body('apellido')
+        .notEmpty()
+        .withMessage('Apellido es requerido'),
 
     // Teléfono es obligatorio
     body('telefono')
