@@ -146,6 +146,7 @@ const createIngreso = async (req, res) => {
                 descripcion,
                 id_categoria,
                 total,
+                id_usuario: userId,         // Usuario que crea el ingreso
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
                 created_at: new Date(),    // Timestamp de creación
                 updated_at: new Date(),     // Timestamp de última actualización
@@ -177,6 +178,7 @@ const updateIngreso = async (req, res) => {
 
         // 2.  Extraer nuevos datos del cuerpo de la petición
         const { codigo_ingreso, fecha, descripcion, id_categoria, total } = req.body;
+           const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
 
         // 3. Actualizar ingreso en la base de datos (solo si está activa)
         const ingreso = await prisma.ingresos.update({
@@ -191,6 +193,7 @@ const updateIngreso = async (req, res) => {
                 descripcion,
                 id_categoria,
                 total,
+                id_usuario: userId,         // Usuario que actualiza el ingreso
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
                 updated_at: new Date(),    // Timestamp de última actualización
             }

@@ -34,7 +34,7 @@ const proveedorValidation = [
         .notEmpty()
         .withMessage('Descripción es requerida'),
     // Teléfono es obligatorio
-    body('telefono')
+    body('contacto')
         .notEmpty()
         .withMessage('Telefono es requerido')
 ];

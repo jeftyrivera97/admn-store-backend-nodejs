@@ -129,7 +129,7 @@ const createProveedor = async (req, res) => {
         }
 
         // 2.  Extraer datos del cuerpo de la petición
-        const { codigo_proveedor, categoria, descripcion, contacto, telefono } = req.body;
+        const { codigo_proveedor, categoria, descripcion, contacto, telefono, correo } = req.body;
 
         // 3.  Obtener ID del usuario autenticado desde el token JWT
         // req.user fue establecido por authMiddleware
@@ -143,6 +143,7 @@ const createProveedor = async (req, res) => {
                 categoria,
                 contacto,
                 telefono,
+                correo,
                 id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
                 id_usuario: userId,        // Usuario que creó el registro
                 created_at: new Date(),    // Timestamp de creación
@@ -174,7 +175,7 @@ const updateProveedor = async (req, res) => {
         const { id } = req.params;
 
         // 2.  Extraer nuevos datos del cuerpo de la petición
-       const { codigo_proveedor, categoria, descripcion, contacto, telefono } = req.body;
+        const { codigo_proveedor, categoria, descripcion, contacto, telefono,correo } = req.body;
 
         // 3.  Obtener ID del usuario autenticado desde el token JWT
         const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
@@ -187,11 +188,12 @@ const updateProveedor = async (req, res) => {
                 deleted_at: null       // Solo registros NO eliminados
             },
             data: {
-               codigo_proveedor,
+                codigo_proveedor,
                 descripcion,
                 categoria,
                 contacto,
                 telefono,
+                correo,
                 updated_at: new Date()    // Actualizar timestamp de modificación
             }
         });

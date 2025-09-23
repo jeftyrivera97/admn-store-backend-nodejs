@@ -223,6 +223,7 @@ model clientes {
   apellido       String?        @db.VarChar(255)
   direccion      String?        @db.VarChar(255)
   telefono       String?        @db.VarChar(255)
+  correo         String?        @db.VarChar(255)
   id_estado      BigInt?
   id_usuario     BigInt?
   created_at     DateTime?      @db.Timestamp(0)
@@ -738,6 +739,7 @@ model proveedores {
   categoria        String      @db.VarChar(255)
   contacto         String      @db.VarChar(255)
   telefono         String?     @db.VarChar(255)
+  correo           String?     @db.VarChar(255)
   id_estado        BigInt?
   id_usuario       BigInt?
   created_at       DateTime?   @db.Timestamp(0)
@@ -873,8 +875,8 @@ model users {
 
 model ventas {
   id                BigInt             @id @default(autoincrement())
-  fecha             DateTime           @db.Timestamptz(0)
   codigo_venta      String             @db.VarChar(255)
+  fecha             DateTime           @db.Timestamptz(0)
   total             Float
   id_movimiento     BigInt?
   id_comprobante    BigInt?
