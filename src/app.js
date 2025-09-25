@@ -52,7 +52,7 @@ app.use(helmet());
 // CORS (Cross-Origin Resource Sharing) permite que el frontend pueda hacer peticiones
 // Solo permite peticiones desde la URL definida en FRONTEND_URL (.env)
 app.use(cors({
-  origin: process.env.FRONTEND_URL,  // Solo permite peticiones desde http://localhost:3000
+  origin: process.env.FRONTEND_URL.split(','), // Permite múltiples orígenes
   credentials: true                   // Permite envío de cookies y headers de autorización
 }));
 
