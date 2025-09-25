@@ -50,9 +50,9 @@ app.use(jsonSerializationMiddleware);
 app.use(helmet());
 
 // CORS (Cross-Origin Resource Sharing) permite que el frontend pueda hacer peticiones
-// Solo permite peticiones desde la URL definida en FRONTEND_URL (.env)
+// Solo permite peticiones desde la URL definida en FRONTEND_URL (variables de entorno de Dokploy)
 app.use(cors({
-  origin: process.env.FRONTEND_URL.split(','), // Permite múltiples orígenes
+  origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:5173'],
   credentials: true                   // Permite envío de cookies y headers de autorización
 }));
 
