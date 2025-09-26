@@ -454,6 +454,8 @@ model estados {
   producto_multimedias    producto_multimedias[]
   productos               productos[]
   proveedores             proveedores[]
+  role_user               role_user[]
+  roles                   roles[]
   tipos_compras           tipos_compras[]
   tipos_comprobantes      tipos_comprobantes[]
   tipos_gastos            tipos_gastos[]
@@ -751,6 +753,33 @@ model proveedores {
   users            users?      @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "proveedores_id_usuario_foreign")
 }
 
+model role_user {
+  id         BigInt    @id @default(autoincrement())
+  user_id    BigInt
+  role_id    BigInt
+  id_estado  BigInt?
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+  deleted_at DateTime? @db.Timestamp(0)
+  estados    estados?  @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "role_user_id_estado_foreign")
+  roles      roles     @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "role_user_role_id_foreign")
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "role_user_user_id_foreign")
+
+  @@unique([user_id, role_id], map: "role_user_user_id_role_id_unique")
+}
+
+model roles {
+  id         BigInt      @id @default(autoincrement())
+  name       String      @db.VarChar(255)
+  slug       String      @unique(map: "roles_slug_unique") @db.VarChar(255)
+  id_estado  BigInt?
+  created_at DateTime?   @db.Timestamp(0)
+  updated_at DateTime?   @db.Timestamp(0)
+  deleted_at DateTime?   @db.Timestamp(0)
+  role_user  role_user[]
+  estados    estados?    @relation(fields: [id_estado], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "roles_id_estado_foreign")
+}
+
 model sessions {
   id            String  @id @db.VarChar(255)
   user_id       BigInt?
@@ -870,6 +899,7 @@ model users {
   producto_multimedias                                    producto_multimedias[]
   productos                                               productos[]
   proveedores                                             proveedores[]
+  role_user                                               role_user[]
   ventas                                                  ventas[]
 }
 
