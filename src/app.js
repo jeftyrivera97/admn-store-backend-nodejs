@@ -55,15 +55,19 @@ app.use(helmet());
 // Configurar orígenes permitidos
 const allowedOrigins = process.env.FRONTEND_URL ? 
   process.env.FRONTEND_URL.split(',').map(url => url.trim()) : 
-  ['http://localhost:5173'];
-  ['https://administracion.elbuenamigosouvenir.site'];
+  [
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'https://administracion.elbuenamigosouvenir.site'
+  ];
 
 app.use(cors({
   origin: allowedOrigins,           // Orígenes permitidos
   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
+  allowedHeaders: ["Content-Type","Authorization","X-Requested-With","Accept","Origin"],
   credentials: true,                // si usas cookies/sesiones
   maxAge: 86400,                    // cachea el preflight (opcional)
+  optionsSuccessStatus: 200         // Para navegadores legacy
 }));
 
 // 🚦 LIMITADOR DE PETICIONES (Rate Limiting)

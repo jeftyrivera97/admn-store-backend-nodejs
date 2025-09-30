@@ -6,26 +6,20 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV}
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
       - FRONTEND_URL=${FRONTEND_URL}
-    depends_on:
-      - postgres
+      - PORT=${PORT}
+    env_file:
+      - .env
     restart: unless-stopped
+    # Si tu base de datos está en una red específica, descomenta las siguientes líneas
+    # networks:
+    #   - your-database-network
 
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=souvenirbd
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
+# Si necesitas conectarte a una red existente donde está tu base de datos
+# networks:
+#   your-database-network:
+#     external: true
