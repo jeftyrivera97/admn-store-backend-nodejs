@@ -9,71 +9,135 @@ const { validationResult } = require('express-validator');   // Para manejar err
 const prisma = new PrismaClient(); // ORM para base de datos
 
 // OBTENER LISTA DE INGRESOS (READ)
-// GET /api/ingresos - Con paginación y búsqueda
+// GET /ingresos?page=1&limit=50&search=ABC&month=2025-02
 const getIngresos = async (req, res) => {
-    try {
-        // 1.  Extraer parámetros de consulta con valores por defecto
-        const {
-            page = 1,      // Página actual (por defecto: 1)
-            limit = 10,    // Elementos por página (por defecto: 10) 
-            search = ''    // Término de búsqueda (por defecto: vacío)
-        } = req.query;
+  try {
+    const {
+      page = "1",
+      limit = "50",
+      search = "",
+      month: monthParam = null, // "YYYY-MM"
+    } = req.query;
 
-        // 2.  Calcular cuántos registros saltar para la paginación
-        // Ejemplo: página 2 con límite 10 = saltar los primeros 10 registros
-        const skip = (page - 1) * limit;
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const skip = (pageNum - 1) * limitNum;
 
-        // 3.  Configurar filtros de búsqueda + solo mostrar activas (soft delete)
-        const whereCondition = {
-            id_estado: BigInt(1),  // Solo mostrar ingresos activas (no eliminadas)
-            deleted_at: null,      // Solo registros NO eliminados (doble verificación)
-            ...(search && {
-                OR: [  // Buscar en cualquiera de estos campos
-                    { codigo_ingreso: { contains: search } },  // Buscar en código
-                ]
-            })
-        };
-
-        // 4.  Ejecutar consultas en paralelo para optimizar rendimiento
-        const [ingresos, total] = await Promise.all([
-            // Obtener ingresos con paginación y filtros
-            prisma.ingresos.findMany({
-                where: whereCondition,
-                skip: parseInt(skip),           // Saltar registros para paginación
-                take: parseInt(limit),          // Limitar cantidad de resultados
-                orderBy: { created_at: 'desc' }, // Ordenar por fecha de creación (más recientes primero)
-                include: {
-                    categorias_ingresos: true,
-                    estados: true,
-                }
-            }),
-
-            // Contar total de registros que coinciden con los filtros
-            prisma.ingresos.count({ where: whereCondition })
-        ]);
-
-
-
-        // 5. Enviar respuesta con datos (el middleware se encarga de la serialización)
-        res.json({
-            data: ingresos,  // Array de ingresos - el middleware convertirá automáticamente BigInt y Date
-            pagination: {
-                page: parseInt(page),           // Página actual
-                limit: parseInt(limit),         // Elementos por página
-                total,                          // Total de registros
-                pages: Math.ceil(total / limit) // Total de páginas
-            }
-        });
-
-    } catch (error) {
-        //  Manejar errores
-        console.error('Error obteniendo ingresos:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+    // --- Normalizar month: si no viene, usar mes actual (UTC) ---
+    const isYearMonth = (s) => /^\d{4}-\d{2}$/.test(s);
+    let y, m; // year, month(1..12)
+    if (monthParam && isYearMonth(monthParam)) {
+      [y, m] = monthParam.split("-").map(Number);
+    } else {
+      const now = new Date();
+      y = now.getUTCFullYear();
+      m = now.getUTCMonth() + 1;
     }
+
+    // --- Rangos de fechas en UTC ---
+    // Mes actual (o el que pediste)
+    const monthStart = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+    const nextMonthStart = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0));
+    const monthRange = { gte: monthStart, lt: nextMonthStart };
+
+    // Mes anterior
+    const prevMonthStart = new Date(Date.UTC(y, m - 2, 1, 0, 0, 0, 0));
+    const prevMonthNextStart = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+    const prevMonthRange = { gte: prevMonthStart, lt: prevMonthNextStart };
+
+    // Año del mes elegido
+    const yearStart = new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0));
+    const nextYearStart = new Date(Date.UTC(y + 1, 0, 1, 0, 0, 0, 0));
+    const yearRange = { gte: yearStart, lt: nextYearStart };
+
+    // --- Filtros base (ajusta tipos según tu schema: Int vs BigInt) ---
+    const baseFilter = {
+      id_estado: BigInt(1),
+      deleted_at: null,
+      ...(search && search.trim() && {
+        OR: [
+          { codigo_ingreso: { contains: String(search), mode: "insensitive" } },
+          // agrega más campos si quieres
+        ],
+      }),
+    };
+
+    // --- where para listado/paginación (mes actual/solicitado) ---
+    const whereList = { ...baseFilter, fecha: monthRange };
+
+    // --- Consultas en paralelo ---
+    const [ingresos, total, aggMes, aggPrevMes, aggAnio] = await Promise.all([
+      prisma.ingresos.findMany({
+        where: whereList,
+        skip,
+        take: limitNum,
+        orderBy: { created_at: "desc" }, // o { fecha: "desc" }
+        include: {
+          categorias_ingresos: true,
+          estados: true,
+        },
+      }),
+      prisma.ingresos.count({ where: whereList }),
+      prisma.ingresos.aggregate({
+        where: { ...baseFilter, fecha: monthRange },
+        _sum: { total: true },
+      }),
+      prisma.ingresos.aggregate({
+        where: { ...baseFilter, fecha: prevMonthRange },
+        _sum: { total: true },
+      }),
+      prisma.ingresos.aggregate({
+        where: { ...baseFilter, fecha: yearRange },
+        _sum: { total: true },
+      }),
+    ]);
+
+    const totalMes = Number(aggMes?._sum?.total ?? 0);
+    const totalMesPrevio = Number(aggPrevMes?._sum?.total ?? 0);
+    const totalAnio = Number(aggAnio?._sum?.total ?? 0);
+
+    // % variación vs mes anterior
+    // Si el mes anterior fue 0:
+    //   - si el actual > 0 => 100%
+    //   - si el actual = 0 => 0%
+    const porcentajeCambio =
+      totalMesPrevio === 0
+        ? (totalMes > 0 ? 100 : 0)
+        : ((totalMes - totalMesPrevio) / totalMesPrevio) * 100;
+
+    res.json({
+      data: ingresos,
+      totals: {
+        totalMes,
+        totalMesPrevio,
+        totalAnio,
+        diferenciaMesVsPrevio: totalMes - totalMesPrevio,
+        porcentajeCambio: Number(porcentajeCambio.toFixed(2)), // ej. 12.34
+      },
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+      meta: {
+        month: `${y}-${String(m).padStart(2, "0")}`,
+        prevMonth: (() => {
+          // solo para referencia en el front
+          const pm = new Date(prevMonthStart);
+          const py = pm.getUTCFullYear();
+          const pmm = pm.getUTCMonth() + 1;
+          return `${py}-${String(pmm).padStart(2, "0")}`;
+        })(),
+      },
+    });
+  } catch (error) {
+    console.error("Error obteniendo ingresos:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 };
 
-//  OBTENER INGRESO POR ID (READ)
-// GET /api/ingresos/:id
+
 const getIngresoById = async (req, res) => {
     try {
         // 1.  Obtener ID de la ingreso desde los parámetros de la URL
@@ -272,5 +336,5 @@ module.exports = {
     createIngreso,  // POST /api/ingresos
     updateIngreso,  // PUT /api/ingresos/:id
     deleteIngreso,  // DELETE /api/ingresos/:id
-    getIngresoById  // GET /api/ingresos/:id
+    getIngresoById,  // GET /api/ingresos/:id
 };

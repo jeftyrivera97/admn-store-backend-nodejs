@@ -7,10 +7,10 @@ const { body } = require('express-validator');           // Para validar datos
 const authMiddleware = require('../middlewares/auth.middleware'); // Middleware de autenticación
 const {
     getIngresos,     // Obtener lista de ingresos
+    getIngresoById,
     createIngreso,   // Crear nueva ingreso
     updateIngreso,   // Actualizar ingreso existente
     deleteIngreso,   // DELETE /api/ingresos/:id
-    getIngresoById   // GET /api/ingresos/:id
 } = require('../controllers/ingresos.controller');
 
 // Crear router para agrupar rutas de ingresos

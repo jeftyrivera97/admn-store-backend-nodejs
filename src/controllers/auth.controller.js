@@ -15,14 +15,14 @@ const prisma = new PrismaClient();
 const generateToken = (userId) => {
   // Convertir BigInt a string porque JWT no puede serializar BigInt
   const userIdString = typeof userId === 'bigint' ? userId.toString() : userId;
-  
+
   // Crear token con:
   // - Payload: { userId: "123" }
   // - Clave secreta: desde variable de entorno
   // - Expiración: definida en .env (ej: 7d = 7 días)
   return jwt.sign(
-    { userId: userIdString }, 
-    process.env.JWT_SECRET, 
+    { userId: userIdString },
+    process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN }
   );
 };
@@ -79,7 +79,7 @@ const register = async (req, res) => {
         // NO enviar la password hasheada por seguridad
       }
     });
-    
+
   } catch (error) {
     //  Manejar errores inesperados
     console.error('Error en registro:', error);
@@ -114,7 +114,7 @@ const login = async (req, res) => {
     // 4.  Verificar que la password sea correcta
     // bcrypt.compare() compara la password en texto plano con la hasheada
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     // Si la password es incorrecta, devolver error genérico
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
@@ -123,6 +123,12 @@ const login = async (req, res) => {
     // 5. Si las credenciales son correctas, generar token JWT
     const token = generateToken(user.id);
 
+    const userRoles = await prisma.role_user.findFirst({
+      where: { user_id: user.id },
+      include: { roles: true } // Incluir detalles del rol
+    });
+
+
     // 6.  Enviar respuesta exitosa con token y datos del usuario
     res.json({
       message: 'Login exitoso',
@@ -130,12 +136,13 @@ const login = async (req, res) => {
       expiresIn: process.env.JWT_EXPIRES_IN,
       user: {
         id: user.id.toString(),  // Convertir BigInt a string
+        name: user.name,
         email: user.email,
-        name: user.name
+        role: userRoles.role_id,
         // NO enviar la password por seguridad
       }
     });
-    
+
   } catch (error) {
     //  Manejar errores inesperados
     console.error('Error en login:', error);
