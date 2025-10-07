@@ -2,313 +2,582 @@
 // Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar planillas
 
 //  Importaciones necesarias
-const { PrismaClient } = require('../generated/prisma');     // ORM para base de datos
-const { validationResult } = require('express-validator');   // Para manejar errores de validación
+const { PrismaClient } = require("../generated/prisma"); // ORM para base de datos
+const { validationResult } = require("express-validator"); // Para manejar errores de validación
 
 //  Crear instancia de Prisma
 const prisma = new PrismaClient(); // ORM para base de datos
 
-// OBTENER LISTA DE PLANILLAS (READ)
-// GET /api/planillas - Con paginación y búsqueda
-const getPlanillas = async (req, res) => {
-    try {
-        // 1.  Extraer parámetros de consulta con valores por defecto
-        const {
-            page = 1,      // Página actual (por defecto: 1)
-            limit = 10,    // Elementos por página (por defecto: 10) 
-            search = ''    // Término de búsqueda (por defecto: vacío)
-        } = req.query;
+// --- FUNCIONES AUXILIARES ---
+const buildSearchFilter = (search) => {
+  const baseFilter = { id_estado: BigInt(1), deleted_at: null };
 
-        // 2.  Calcular cuántos registros saltar para la paginación
-        // Ejemplo: página 2 con límite 10 = saltar los primeros 10 registros
-        const skip = (page - 1) * limit;
+  if (!search || !String(search).trim()) return baseFilter;
 
-        // 3.  Configurar filtros de búsqueda + solo mostrar activas (soft delete)
-        const whereCondition = {
-            id_estado: BigInt(1),  // Solo mostrar planillas activas (no eliminadas)
-            deleted_at: null,      // Solo registros NO eliminados (doble verificación)
-            ...(search && {
-                OR: [  // Buscar en cualquiera de estos campos
-                    { codigo_planilla: { contains: search } },  // Buscar en código
-                ]
-            })
-        };
+  const s = String(search).trim();
+  const or = [
+    { codigo_compra: { contains: s, mode: "insensitive" } },
+    { descripcion: { contains: s, mode: "insensitive" } },
+    {
+      categorias_planillas: {
+        is: { descripcion: { contains: s, mode: "insensitive" } },
+      },
+    },
+  ];
 
-        // 4.  Ejecutar consultas en paralelo para optimizar rendimiento
-        const [planillas, total] = await Promise.all([
-            // Obtener planillas con paginación y filtros
-            prisma.planillas.findMany({
-                where: whereCondition,
-                skip: parseInt(skip),           // Saltar registros para paginación
-                take: parseInt(limit),          // Limitar cantidad de resultados
-                orderBy: { created_at: 'desc' }, // Ordenar por fecha de creación (más recientes primero)
-                include: {
-                    categorias_planillas: true,
-                    estados: true,
-                    empleados: true,
-                }
-            }),
+  const num = Number(s);
+  if (!isNaN(num) && num > 0) or.push({ total: num });
 
-            // Contar total de registros que coinciden con los filtros
-            prisma.planillas.count({ where: whereCondition })
-        ]);
+  return { ...baseFilter, OR: or };
+};
 
+const getDateRanges = (monthParam) => {
+  const isYearMonth = (s) => /^\d{4}-\d{2}$/.test(s);
+  let y, m;
 
+  if (monthParam && isYearMonth(monthParam)) {
+    [y, m] = monthParam.split("-").map(Number);
+  } else {
+    const now = new Date();
+    y = now.getUTCFullYear();
+    m = now.getUTCMonth() + 1;
+  }
 
-        // 5. Enviar respuesta con datos (el middleware se encarga de la serialización)
-        res.json({
-            data: planillas,  // Array de planillas - el middleware convertirá automáticamente BigInt y Date
-            pagination: {
-                page: parseInt(page),           // Página actual
-                limit: parseInt(limit),         // Elementos por página
-                total,                          // Total de registros
-                pages: Math.ceil(total / limit) // Total de páginas
-            }
-        });
+  return {
+    year: y,
+    month: m,
+    monthRange: {
+      gte: new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0)),
+      lt: new Date(Date.UTC(y, m, 1, 0, 0, 0, 0)),
+    },
+    prevMonthRange: {
+      gte: new Date(Date.UTC(y, m - 2, 1, 0, 0, 0, 0)),
+      lt: new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0)),
+    },
+    yearRange: {
+      gte: new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0)),
+      lt: new Date(Date.UTC(y + 1, 0, 1, 0, 0, 0, 0)),
+    },
+    prevYearRange: {
+      gte: new Date(Date.UTC(y - 1, 0, 1, 0, 0, 0, 0)),
+      lt: new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0)),
+    },
+  };
+};
 
-    } catch (error) {
-        //  Manejar errores
-        console.error('Error obteniendo planillas:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+const getMonthlyTotals = async (baseFilter, yearRange, search) => {
+  const spanishMonthNames = [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+  ];
+
+  let monthlyRows;
+  if (search && String(search).trim()) {
+    const s = String(search).trim();
+    const searchParam = `%${s}%`;
+    const num = Number(s);
+
+    if (!isNaN(num)) {
+      monthlyRows = await prisma.$queryRaw`
+        SELECT to_char(date_trunc('month', i.fecha), 'YYYY-MM') AS month, COALESCE(SUM(i.total),0) AS total
+        FROM planillas i
+        LEFT JOIN categorias_planillas c ON i.id_categoria = c.id
+        WHERE i.fecha >= ${yearRange.gte} AND i.fecha < ${yearRange.lt}
+          AND i.id_estado = ${BigInt(1)} AND i.deleted_at IS NULL
+          AND (i.codigo_compra ILIKE ${searchParam} OR i.descripcion ILIKE ${searchParam} 
+               OR c.descripcion ILIKE ${searchParam} OR i.total = ${num})
+        GROUP BY 1 ORDER BY 1
+      `;
+    } else {
+      monthlyRows = await prisma.$queryRaw`
+        SELECT to_char(date_trunc('month', i.fecha), 'YYYY-MM') AS month, COALESCE(SUM(i.total),0) AS total
+        FROM planillas i
+        LEFT JOIN categorias_planillas c ON i.id_categoria = c.id
+        WHERE i.fecha >= ${yearRange.gte} AND i.fecha < ${yearRange.lt}
+          AND i.id_estado = ${BigInt(1)} AND i.deleted_at IS NULL
+          AND (i.codigo_compra ILIKE ${searchParam} OR i.descripcion ILIKE ${searchParam} 
+               OR c.descripcion ILIKE ${searchParam})
+        GROUP BY 1 ORDER BY 1
+      `;
     }
+  } else {
+    monthlyRows = await prisma.$queryRaw`
+      SELECT to_char(date_trunc('month', fecha), 'YYYY-MM') AS month, COALESCE(SUM(total),0) AS total
+      FROM planillas
+      WHERE fecha >= ${yearRange.gte} AND fecha < ${yearRange.lt}
+        AND id_estado = ${BigInt(1)} AND deleted_at IS NULL
+      GROUP BY 1 ORDER BY 1
+    `;
+  }
+
+  const monthlyMap = new Map(
+    (monthlyRows || []).map((r) => [String(r.month), Number(r.total)])
+  );
+  return Array.from({ length: 12 }).map((_, idx) => {
+    const mm = String(idx + 1).padStart(2, "0");
+    const key = `${yearRange.gte.getUTCFullYear()}-${mm}`;
+    return {
+      month: key,
+      monthName: spanishMonthNames[idx],
+      total: monthlyMap.get(key) || 0,
+    };
+  });
+};
+
+const calculatePercentageChange = (current, previous) => {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+};
+
+const processCategories = async (baseFilter, monthRange) => {
+  const groupByCat = await prisma.planillas.groupBy({
+    by: ["id_categoria"],
+    where: { ...baseFilter, fecha: monthRange },
+    _sum: { total: true },
+  });
+
+  const categoryIds = groupByCat.map((g) => g.id_categoria).filter(Boolean);
+  const categories = categoryIds.length
+    ? await prisma.categorias_planillas.findMany({
+        where: { id: { in: categoryIds.map((id) => BigInt(id)) } },
+        select: { id: true, descripcion: true, id_tipo: true },
+      })
+    : [];
+
+  const categoryMap = new Map(
+    categories.map((c) => [c.id.toString(), c.descripcion])
+  );
+
+  return { groupByCat, categories, categoryMap };
+};
+
+const processTipos = async (groupByCat, categories, totalMes) => {
+  const totalsByTipoMap = new Map();
+
+  for (const g of groupByCat) {
+    const catId = g.id_categoria;
+    if (!catId) continue;
+
+    const cat = categories.find((c) => c.id.toString() === catId.toString());
+    const tipoId = cat?.id_tipo?.toString() || "null";
+    const sum = Number(g._sum?.total ?? 0);
+
+    totalsByTipoMap.set(tipoId, (totalsByTipoMap.get(tipoId) || 0) + sum);
+  }
+
+  const tipoIds = Array.from(totalsByTipoMap.keys()).filter(
+    (k) => k !== "null"
+  );
+  const tipos = tipoIds.length
+    ? await prisma.tipos_planillas.findMany({
+        where: { id: { in: tipoIds.map((id) => BigInt(id)) } },
+        select: { id: true, descripcion: true },
+      })
+    : [];
+
+  const tipoMap = new Map(tipos.map((t) => [t.id.toString(), t.descripcion]));
+
+  return Array.from(totalsByTipoMap.entries()).map(([key, value]) => {
+    const total = Number(value);
+    const pct =
+      totalMes === 0 ? 0 : Number(((total / totalMes) * 100).toFixed(2));
+    return {
+      id_tipo: key === "null" ? null : key,
+      descripcion: key === "null" ? null : tipoMap.get(key) || null,
+      total,
+      percentage: pct,
+    };
+  });
+};
+
+// OBTENER LISTA DE PLANILLAS (READ)
+// GET /planillas?page=1&limit=50&search=ABC&month=2025-02
+const getPlanillas = async (req, res) => {
+  try {
+    const {
+      page = "1",
+      limit = "50",
+      search = "",
+      month: monthParam = null,
+    } = req.query;
+
+    // Paginación
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Filtros y rangos de fechas
+    const baseFilter = buildSearchFilter(search);
+    const {
+      year,
+      month,
+      monthRange,
+      prevMonthRange,
+      yearRange,
+      prevYearRange,
+    } = getDateRanges(monthParam);
+    const whereList = { ...baseFilter, fecha: monthRange };
+
+    // Consultas principales en paralelo
+    const [planillas, totalAgg, totals] = await Promise.all([
+      prisma.planillas.findMany({
+        where: whereList,
+        skip,
+        take: limitNum,
+        orderBy: { created_at: "desc" },
+        include: {
+          categorias_planillas: true,
+          estados: true,
+          users: true,
+          empleados: true,
+          gasto_planillas: true,
+        },
+      }),
+      prisma.planillas.aggregate({ where: whereList, _count: { _all: true } }),
+      Promise.all([
+        prisma.planillas.aggregate({
+          where: { ...baseFilter, fecha: monthRange },
+          _sum: { total: true },
+        }),
+        prisma.planillas.aggregate({
+          where: { ...baseFilter, fecha: prevMonthRange },
+          _sum: { total: true },
+        }),
+        prisma.planillas.aggregate({
+          where: { ...baseFilter, fecha: yearRange },
+          _sum: { total: true },
+        }),
+        prisma.planillas.aggregate({
+          where: { ...baseFilter, fecha: prevYearRange },
+          _sum: { total: true },
+        }),
+      ]),
+    ]);
+
+    const [aggMes, aggPrevMes, aggAnio, aggPrevYear] = totals;
+    const total = Number(totalAgg?._count?._all ?? 0);
+    const totalMes = Number(aggMes?._sum?.total ?? 0);
+    const totalMesPrevio = Number(aggPrevMes?._sum?.total ?? 0);
+    const totalAnio = Number(aggAnio?._sum?.total ?? 0);
+    const totalYearPrev = Number(aggPrevYear?._sum?.total ?? 0);
+
+    // Procesar datos en paralelo
+    const [monthlyTotals, { groupByCat, categories, categoryMap }] =
+      await Promise.all([
+        getMonthlyTotals(baseFilter, yearRange, search),
+        processCategories(baseFilter, monthRange),
+      ]);
+
+    const [totalsByTipo] = await Promise.all([
+      processTipos(groupByCat, categories, totalMes),
+    ]);
+
+    const totalsByCategory = groupByCat.map((g) => ({
+      id_categoria: g.id_categoria?.toString() || null,
+      descripcion: g.id_categoria
+        ? categoryMap.get(g.id_categoria.toString()) || null
+        : null,
+      total: Number(g._sum?.total ?? 0),
+      percentage:
+        totalMes === 0 ? 0 : Number(((g._sum?.total ?? 0) / totalMes) * 100),
+    }));
+
+    res.json({
+      data: planillas,
+      statistics: {
+        totalRegistros: total,
+        totalMonth: totalMes,
+        totalMonthPrev: totalMesPrevio,
+        totalYear: totalAnio,
+        totalYearPrev: totalYearPrev,
+        diferenciaMensual: totalMes - totalMesPrevio,
+        diferenciaAnual: totalAnio - totalYearPrev,
+        porcentajeCambioMensual: Number(
+          calculatePercentageChange(totalMes, totalMesPrevio).toFixed(2)
+        ),
+        porcentajeCambioAnual: Number(
+          calculatePercentageChange(totalAnio, totalYearPrev).toFixed(2)
+        ),
+        categorias: totalsByCategory,
+        tipos: totalsByTipo,
+        totalsMonths: monthlyTotals,
+      },
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+      meta: {
+        month: `${year}-${String(month).padStart(2, "0")}`,
+        prevMonth: (() => {
+          const pm = new Date(prevMonthRange.gte);
+          return `${pm.getUTCFullYear()}-${String(
+            pm.getUTCMonth() + 1
+          ).padStart(2, "0")}`;
+        })(),
+      },
+    });
+  } catch (error) {
+    console.error("Error obteniendo planillas:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 };
 
 //  OBTENER PLANILLA POR ID (READ)
 // GET /api/planillas/:id
 const getPlanillaById = async (req, res) => {
-    try {
-        // 1.  Obtener ID de la planilla desde los parámetros de la URL
-        const { id } = req.params;
+  try {
+    // 1.  Obtener ID de la planilla desde los parámetros de la URL
+    const { id } = req.params;
 
-        console.log(' Buscando planilla con ID:', id);
+    console.log(" Buscando planilla con ID:", id);
 
-        // 2. 🔍 Buscar planilla específica en la base de datos (solo activas)
-        const planilla = await prisma.planillas.findUnique({
-            where: {
-                id: BigInt(id),
-                id_estado: BigInt(1),  // Solo planillas activas
-                deleted_at: null       // Solo registros NO eliminados
-            },
-             include: {
-                    categorias_planillas: true,
-                    estados: true,
-                      empleados: true,
-                }
-        });
+    // 2. 🔍 Buscar planilla específica en la base de datos (solo activas)
+    const planilla = await prisma.planillas.findUnique({
+      where: {
+        id: BigInt(id),
+        id_estado: BigInt(1), // Solo planillas activas
+        deleted_at: null, // Solo registros NO eliminados
+      },
+      include: {
+        categorias_planillas: true,
+        estados: true,
+        empleados: true,
+      },
+    });
 
-        // 3. Verificar si la planilla existe
-        if (!planilla) {
-            return res.status(404).json({
-                success: false,
-                message: ' Planilla no encontrada'
-            });
-        }
-
-        // 4.  Enviar respuesta exitosa con los datos de la planilla
-        res.json({
-            success: true,
-            message: ' Planilla encontrada',
-            data: planilla
-        });
-
-    } catch (error) {
-        //  Manejar errores (incluye error P2025 si el ID no existe)
-        console.error(' Error obteniendo planilla:', error);
-        res.status(500).json({
-            success: false,
-            message: ' Error interno del servidor'
-        });
+    // 3. Verificar si la planilla existe
+    if (!planilla) {
+      return res.status(404).json({
+        success: false,
+        message: " Planilla no encontrada",
+      });
     }
+
+    // 4.  Enviar respuesta exitosa con los datos de la planilla
+    res.json({
+      success: true,
+      message: " Planilla encontrada",
+      data: planilla,
+    });
+  } catch (error) {
+    //  Manejar errores (incluye error P2025 si el ID no existe)
+    console.error(" Error obteniendo planilla:", error);
+    res.status(500).json({
+      success: false,
+      message: " Error interno del servidor",
+    });
+  }
 };
 
 //  CREAR NUEVA PLANILLA (CREATE)
 // POST /api/planillas
 const createPlanilla = async (req, res) => {
-    try {
-        // 1.  Verificar que las validaciones pasaron
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
-        // 2.  Extraer datos del cuerpo de la petición
-        const { codigo_planilla,id_empleado, fecha, descripcion, id_categoria, total } = req.body;
-
-        // 3.  Obtener ID del usuario autenticado desde el token JWT
-        // req.user fue establecido por authMiddleware
-        const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
-       
-        // 4. Crear planilla en la base de datos
-        const planilla = await prisma.planillas.create({
-            data: {
-                codigo_planilla, // Generar código único basado en timestamp
-                fecha,
-                descripcion,
-                id_categoria,
-                id_empleado,
-                total,
-                id_estado: BigInt(1), 
-                id_usuario: userId,     // Estado activo por defecto (asumir que 1 = activo)  
-                created_at: new Date(),    // Timestamp de creación
-                updated_at: new Date(),     // Timestamp de última actualización
-            }
-        });
-
-
-        const gasto = await prisma.gastos.create({
-            data: {
-                codigo_gasto: planilla.codigo_planilla, // Usar mismo código que la planilla
-                fecha,
-                descripcion: `Pago de planilla: ${planilla.descripcion}`,
-                id_categoria,
-                total,
-                id_estado: BigInt(1),
-                id_usuario: userId,       // Estado activo por defecto (asumir que 1 = activo)  
-                created_at: new Date(),    // Timestamp de creación
-                updated_at: new Date(),     // Timestamp de última actualización
-            }
-        });
-
-        console.log(' Planilla creada exitosamente:', planilla.id);
-
-        // 5.  Enviar respuesta exitosa
-        res.status(201).json({
-            success: true,
-            message: ' Planilla creada exitosamente',
-            data: planilla, gasto
-        });
-
-    } catch (error) {
-        // Manejar errores
-        console.error('Error creando planilla:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+  try {
+    // 1.  Verificar que las validaciones pasaron
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
+
+    // 2.  Extraer datos del cuerpo de la petición
+    const {
+      codigo_planilla,
+      id_empleado,
+      fecha,
+      descripcion,
+      id_categoria,
+      total,
+    } = req.body;
+
+    // 3.  Obtener ID del usuario autenticado desde el token JWT
+    // req.user fue establecido por authMiddleware
+    const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
+
+    // 4. Crear planilla en la base de datos
+    const planilla = await prisma.planillas.create({
+      data: {
+        codigo_planilla, // Generar código único basado en timestamp
+        fecha,
+        descripcion,
+        id_categoria,
+        id_empleado,
+        total,
+        id_estado: BigInt(1),
+        id_usuario: userId, // Estado activo por defecto (asumir que 1 = activo)
+        created_at: new Date(), // Timestamp de creación
+        updated_at: new Date(), // Timestamp de última actualización
+      },
+    });
+
+    const gasto = await prisma.gastos.create({
+      data: {
+        codigo_gasto: planilla.codigo_planilla, // Usar mismo código que la planilla
+        fecha,
+        descripcion: `Pago de planilla: ${planilla.descripcion}`,
+        id_categoria,
+        total,
+        id_estado: BigInt(1),
+        id_usuario: userId, // Estado activo por defecto (asumir que 1 = activo)
+        created_at: new Date(), // Timestamp de creación
+        updated_at: new Date(), // Timestamp de última actualización
+      },
+    });
+
+    console.log(" Planilla creada exitosamente:", planilla.id);
+
+    // 5.  Enviar respuesta exitosa
+    res.status(201).json({
+      success: true,
+      message: " Planilla creada exitosamente",
+      data: planilla,
+      gasto,
+    });
+  } catch (error) {
+    // Manejar errores
+    console.error("Error creando planilla:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 };
 
 //  ACTUALIZAR PLANILLA EXISTENTE (UPDATE)
 // PUT /api/planillas/:id
 const updatePlanilla = async (req, res) => {
-    try {
-        // 1.  Obtener ID de la planilla desde los parámetros de la URL
-        const { id } = req.params;
+  try {
+    // 1.  Obtener ID de la planilla desde los parámetros de la URL
+    const { id } = req.params;
 
-        // 2.  Extraer nuevos datos del cuerpo de la petición
-        const { codigo_planilla, id_empleado, fecha, descripcion, id_categoria, total } = req.body;
+    // 2.  Extraer nuevos datos del cuerpo de la petición
+    const {
+      codigo_planilla,
+      id_empleado,
+      fecha,
+      descripcion,
+      id_categoria,
+      total,
+    } = req.body;
 
-          // 3.  Obtener ID del usuario autenticado desde el token JWT
-        // req.user fue establecido por authMiddleware
-        const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
+    // 3.  Obtener ID del usuario autenticado desde el token JWT
+    // req.user fue establecido por authMiddleware
+    const userId = BigInt(req.user.userId); // Convertir de string a BigInt para Prisma
 
-        // 3. Actualizar planilla en la base de datos (solo si está activa)
-        const planilla = await prisma.planillas.update({
-            where: {
-                id: BigInt(id),
-                id_estado: BigInt(1),  // Solo actualizar planillas activas
-                deleted_at: null       // Solo registros NO eliminados
-            },
-            data: {
-                codigo_planilla,
-                fecha,
-                descripcion,
-                id_categoria,
-                id_empleado,
-                total,
-                id_usuario: userId,
-                id_estado: BigInt(1),       // Estado activo por defecto (asumir que 1 = activo)  
-                updated_at: new Date(),    // Timestamp de última actualización
-            }
-        });
+    // 3. Actualizar planilla en la base de datos (solo si está activa)
+    const planilla = await prisma.planillas.update({
+      where: {
+        id: BigInt(id),
+        id_estado: BigInt(1), // Solo actualizar planillas activas
+        deleted_at: null, // Solo registros NO eliminados
+      },
+      data: {
+        codigo_planilla,
+        fecha,
+        descripcion,
+        id_categoria,
+        id_empleado,
+        total,
+        id_usuario: userId,
+        id_estado: BigInt(1), // Estado activo por defecto (asumir que 1 = activo)
+        updated_at: new Date(), // Timestamp de última actualización
+      },
+    });
 
-        const gasto = await prisma.gastos.update({
-            where: {
-                id: BigInt(id),
-                id_estado: BigInt(1),  // Solo actualizar gastos activas
-                deleted_at: null       // Solo registros NO eliminados
-            },
-            data: {
-                codigo_gasto: planilla.codigo_planilla,
-                fecha,
-                descripcion: planilla.descripcion,
-                id_categoria,
-                total,
-                id_estado: BigInt(1),
-                id_usuario: userId,     // Estado activo por defecto (asumir que 1 = activo)
-                updated_at: new Date(),    // Timestamp de última actualización
-            }
-        });
+    const gasto = await prisma.gastos.update({
+      where: {
+        id: BigInt(id),
+        id_estado: BigInt(1), // Solo actualizar gastos activas
+        deleted_at: null, // Solo registros NO eliminados
+      },
+      data: {
+        codigo_gasto: planilla.codigo_planilla,
+        fecha,
+        descripcion: planilla.descripcion,
+        id_categoria,
+        total,
+        id_estado: BigInt(1),
+        id_usuario: userId, // Estado activo por defecto (asumir que 1 = activo)
+        updated_at: new Date(), // Timestamp de última actualización
+      },
+    });
 
-        // 4.  Enviar respuesta exitosa
-        res.json({
-            message: 'Planilla actualizado exitosamente',
-            data: planilla
-        });
-
-    } catch (error) {
-        //  Manejar errores (incluye error P2025 si el ID no existe)
-        console.error('Error actualizando planilla:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
-    }
+    // 4.  Enviar respuesta exitosa
+    res.json({
+      message: "Planilla actualizado exitosamente",
+      data: planilla,
+    });
+  } catch (error) {
+    //  Manejar errores (incluye error P2025 si el ID no existe)
+    console.error("Error actualizando planilla:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 };
 
 //  ELIMINAR PLANILLA (SOFT DELETE)
 // DELETE /api/planillas/:id - Compatible con soft delete de Laravel
 const deletePlanilla = async (req, res) => {
-    try {
-        // 1.  Obtener ID de la planilla desde los parámetros de la URL
-        const { id } = req.params;
+  try {
+    // 1.  Obtener ID de la planilla desde los parámetros de la URL
+    const { id } = req.params;
 
-        console.log(' Soft delete de planilla con ID:', id);
+    console.log(" Soft delete de planilla con ID:", id);
 
-        // 2.  Verificar que la planilla existe y está activa
-        const planillaExistente = await prisma.planillas.findUnique({
-            where: {
-                id: BigInt(id),
-                id_estado: BigInt(1)  // Solo buscar planillas activas
-            }
-        });
+    // 2.  Verificar que la planilla existe y está activa
+    const planillaExistente = await prisma.planillas.findUnique({
+      where: {
+        id: BigInt(id),
+        id_estado: BigInt(1), // Solo buscar planillas activas
+      },
+    });
 
-        if (!planillaExistente) {
-            return res.status(404).json({
-                success: false,
-                message: ' Planilla no encontrada o ya está eliminada'
-            });
-        }
-
-        // 3.  SOFT DELETE: Cambiar estado a inactivo y marcar deleted_at
-        await prisma.planillas.update({
-            where: { id: BigInt(id) },
-            data: {
-                id_estado: BigInt(2),        // Cambiar estado a inactivo/eliminado
-                deleted_at: new Date(),      // Marcar como eliminado con timestamp actual
-                updated_at: new Date()       // Actualizar timestamp de modificación
-            }
-        });
-
-        console.log('Planilla marcada como eliminada (soft delete)');
-
-        // 4.  Enviar respuesta exitosa
-        res.json({
-            success: true,
-            message: ' Planilla eliminada exitosamente'
-        });
-
-    } catch (error) {
-        //  Manejar errores (incluye error P2025 si el ID no existe)
-        console.error(' Error eliminando planilla:', error);
-        res.status(500).json({
-            success: false,
-            message: ' Error interno del servidor'
-        });
+    if (!planillaExistente) {
+      return res.status(404).json({
+        success: false,
+        message: " Planilla no encontrada o ya está eliminada",
+      });
     }
+
+    // 3.  SOFT DELETE: Cambiar estado a inactivo y marcar deleted_at
+    await prisma.planillas.update({
+      where: { id: BigInt(id) },
+      data: {
+        id_estado: BigInt(2), // Cambiar estado a inactivo/eliminado
+        deleted_at: new Date(), // Marcar como eliminado con timestamp actual
+        updated_at: new Date(), // Actualizar timestamp de modificación
+      },
+    });
+
+    console.log("Planilla marcada como eliminada (soft delete)");
+
+    // 4.  Enviar respuesta exitosa
+    res.json({
+      success: true,
+      message: " Planilla eliminada exitosamente",
+    });
+  } catch (error) {
+    //  Manejar errores (incluye error P2025 si el ID no existe)
+    console.error(" Error eliminando planilla:", error);
+    res.status(500).json({
+      success: false,
+      message: " Error interno del servidor",
+    });
+  }
 };
-
-
 
 //  Exportar todas las funciones para usar en las rutas
 module.exports = {
-    getPlanillas,    // GET /api/planillas
-    createPlanilla,  // POST /api/planillas
-    updatePlanilla,  // PUT /api/planillas/:id
-    deletePlanilla,  // DELETE /api/planillas/:id
-    getPlanillaById  // GET /api/planillas/:id
+  getPlanillas, // GET /api/planillas
+  createPlanilla, // POST /api/planillas
+  updatePlanilla, // PUT /api/planillas/:id
+  deletePlanilla, // DELETE /api/planillas/:id
+  getPlanillaById, // GET /api/planillas/:id
 };

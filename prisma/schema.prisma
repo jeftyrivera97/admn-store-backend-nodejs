@@ -257,6 +257,7 @@ model compras {
   id                  BigInt               @id @default(autoincrement())
   codigo_compra       String               @db.VarChar(255)
   fecha               DateTime             @db.Date
+  descripcion         String?              @db.VarChar(255)
   id_categoria        BigInt?
   id_proveedor        BigInt?
   id_tipo_operacion   BigInt?
@@ -537,7 +538,7 @@ model gastos {
   id                BigInt             @id @default(autoincrement())
   codigo_gasto      String             @db.VarChar(255)
   fecha             DateTime           @db.Date
-  descripcion       String             @db.VarChar(255)
+  descripcion       String?            @db.VarChar(255)
   id_categoria      BigInt?
   total             Float
   id_estado         BigInt?
@@ -567,7 +568,7 @@ model ingresos {
   id                  BigInt               @id @default(autoincrement())
   codigo_ingreso      String               @unique(map: "ingresos_codigo_ingreso_unique") @db.VarChar(255)
   fecha               DateTime             @db.Date
-  descripcion         String               @db.VarChar(255)
+  descripcion         String?              @db.VarChar(255)
   id_categoria        BigInt?
   total               Float
   id_estado           BigInt?
@@ -664,7 +665,7 @@ model planillas {
   id                   BigInt                @id @default(autoincrement())
   codigo_planilla      String                @db.VarChar(255)
   fecha                DateTime              @db.Date
-  descripcion          String                @db.VarChar(255)
+  descripcion          String?               @db.VarChar(255)
   id_categoria         BigInt?
   id_empleado          BigInt?
   total                Float

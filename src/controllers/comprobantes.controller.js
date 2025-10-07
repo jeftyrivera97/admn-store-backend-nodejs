@@ -8,75 +8,269 @@ const { validationResult } = require('express-validator');   // Para manejar err
 //  Crear instancia de Prisma
 const prisma = new PrismaClient(); // ORM para base de datos
 
-// OBTENER LISTA DE COMPROBANTES (READ)
-// GET /api/comprobantes - Con paginación y búsqueda
-const getComprobantes = async (req, res) => {
-    try {
-        // 1.  Extraer parámetros de consulta con valores por defecto
-        const {
-            page = 1,      // Página actual (por defecto: 1)
-            limit = 10,    // Elementos por página (por defecto: 10) 
-            search = ''    // Término de búsqueda (por defecto: vacío)
-        } = req.query;
+// --- FUNCIONES AUXILIARES ---
+const buildSearchFilter = (search) => {
+  const baseFilter = { id_estado: BigInt(1), deleted_at: null };
+  
+  if (!search || !String(search).trim()) return baseFilter;
+  
+  const s = String(search).trim();
+  const or = [
+    { codigo_comprobante: { contains: s, mode: 'insensitive' } },
+    { descripcion: { contains: s, mode: 'insensitive' } },
+    { categorias_comprobantes: { is: { descripcion: { contains: s, mode: 'insensitive' } } } }
+  ];
+  
+  const num = Number(s);
+  if (!isNaN(num) && num > 0) or.push({ total: num });
+  
+  return { ...baseFilter, OR: or };
+};
 
-        // 2.  Calcular cuántos registros saltar para la paginación
-        // Ejemplo: página 2 con límite 10 = saltar los primeros 10 registros
-        const skip = (page - 1) * limit;
+const getDateRanges = (monthParam) => {
+  const isYearMonth = (s) => /^\d{4}-\d{2}$/.test(s);
+  let y, m;
+  
+  if (monthParam && isYearMonth(monthParam)) {
+    [y, m] = monthParam.split("-").map(Number);
+  } else {
+    const now = new Date();
+    y = now.getUTCFullYear();
+    m = now.getUTCMonth() + 1;
+  }
 
-        // 3.  Configurar filtros de búsqueda + solo mostrar activas (soft delete)
-        const whereCondition = {
-            id_estado: BigInt(1),  // Solo mostrar comprobantes activas (no eliminadas)
-            deleted_at: null,      // Solo registros NO eliminados (doble verificación)
-            ...(search && {
-                OR: [  // Buscar en cualquiera de estos campos
-                    { codigo_comprobante: { contains: search } },  // Buscar en código
-                ]
-            })
-        };
-
-        // 4.  Ejecutar consultas en paralelo para optimizar rendimiento
-        const [comprobantes, total] = await Promise.all([
-            // Obtener comprobantes con paginación y filtros
-            prisma.comprobantes.findMany({
-                where: whereCondition,
-                skip: parseInt(skip),           // Saltar registros para paginación
-                take: parseInt(limit),          // Limitar cantidad de resultados
-                orderBy: { created_at: 'desc' }, // Ordenar por fecha de creación (más recientes primero)
-                include: {
-                    categorias_comprobantes: true,
-                    clientes: true,
-                    comprobantes_detalles: true,
-                    comprobantes_folios: true,
-                    estados_comprobantes: true,
-                    tipos_comprobantes: true,
-                    estados: true,
-                    ventas: true,
-                    comprobantes_pagos: true,
-                }
-            }),
-
-            // Contar total de registros que coinciden con los filtros
-            prisma.comprobantes.count({ where: whereCondition })
-        ]);
-
-
-
-        // 5. Enviar respuesta con datos (el middleware se encarga de la serialización)
-        res.json({
-            data: comprobantes,  // Array de comprobantes - el middleware convertirá automáticamente BigInt y Date
-            pagination: {
-                page: parseInt(page),           // Página actual
-                limit: parseInt(limit),         // Elementos por página
-                total,                          // Total de registros
-                pages: Math.ceil(total / limit) // Total de páginas
-            }
-        });
-
-    } catch (error) {
-        //  Manejar errores
-        console.error('Error obteniendo comprobantes:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+  return {
+    year: y,
+    month: m,
+    monthRange: {
+      gte: new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0)),
+      lt: new Date(Date.UTC(y, m, 1, 0, 0, 0, 0))
+    },
+    prevMonthRange: {
+      gte: new Date(Date.UTC(y, m - 2, 1, 0, 0, 0, 0)),
+      lt: new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0))
+    },
+    yearRange: {
+      gte: new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0)),
+      lt: new Date(Date.UTC(y + 1, 0, 1, 0, 0, 0, 0))
+    },
+    prevYearRange: {
+      gte: new Date(Date.UTC(y - 1, 0, 1, 0, 0, 0, 0)),
+      lt: new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0))
     }
+  };
+};
+
+const getMonthlyTotals = async (baseFilter, yearRange, search) => {
+  const spanishMonthNames = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+  ];
+
+  let monthlyRows;
+  if (search && String(search).trim()) {
+    const s = String(search).trim();
+    const searchParam = `%${s}%`;
+    const num = Number(s);
+    
+    if (!isNaN(num)) {
+      monthlyRows = await prisma.$queryRaw`
+        SELECT to_char(date_trunc('month', i.fecha), 'YYYY-MM') AS month, COALESCE(SUM(i.total),0) AS total
+        FROM comprobantes i
+        LEFT JOIN categorias_comprobantes c ON i.id_categoria = c.id
+        WHERE i.fecha >= ${yearRange.gte} AND i.fecha < ${yearRange.lt}
+          AND i.id_estado = ${BigInt(1)} AND i.deleted_at IS NULL
+          AND (i.codigo_comprobante ILIKE ${searchParam} OR i.descripcion ILIKE ${searchParam} 
+               OR c.descripcion ILIKE ${searchParam} OR i.total = ${num})
+        GROUP BY 1 ORDER BY 1
+      `;
+    } else {
+      monthlyRows = await prisma.$queryRaw`
+        SELECT to_char(date_trunc('month', i.fecha), 'YYYY-MM') AS month, COALESCE(SUM(i.total),0) AS total
+        FROM comprobantes i
+        LEFT JOIN categorias_comprobantes c ON i.id_categoria = c.id
+        WHERE i.fecha >= ${yearRange.gte} AND i.fecha < ${yearRange.lt}
+          AND i.id_estado = ${BigInt(1)} AND i.deleted_at IS NULL
+          AND (i.codigo_comprobante ILIKE ${searchParam} OR i.descripcion ILIKE ${searchParam} 
+               OR c.descripcion ILIKE ${searchParam})
+        GROUP BY 1 ORDER BY 1
+      `;
+    }
+  } else {
+    monthlyRows = await prisma.$queryRaw`
+      SELECT to_char(date_trunc('month', fecha), 'YYYY-MM') AS month, COALESCE(SUM(total),0) AS total
+      FROM comprobantes
+      WHERE fecha >= ${yearRange.gte} AND fecha < ${yearRange.lt}
+        AND id_estado = ${BigInt(1)} AND deleted_at IS NULL
+      GROUP BY 1 ORDER BY 1
+    `;
+  }
+
+  const monthlyMap = new Map((monthlyRows || []).map((r) => [String(r.month), Number(r.total)]));
+  return Array.from({ length: 12 }).map((_, idx) => {
+    const mm = String(idx + 1).padStart(2, '0');
+    const key = `${yearRange.gte.getUTCFullYear()}-${mm}`;
+    return {
+      month: key,
+      monthName: spanishMonthNames[idx],
+      total: monthlyMap.get(key) || 0,
+    };
+  });
+};
+
+const calculatePercentageChange = (current, previous) => {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+};
+
+const processCategories = async (baseFilter, monthRange) => {
+  const groupByCat = await prisma.comprobantes.groupBy({
+    by: ["id_categoria"],
+    where: { ...baseFilter, fecha: monthRange },
+    _sum: { total: true },
+  });
+
+  const categoryIds = groupByCat.map((g) => g.id_categoria).filter(Boolean);
+  const categories = categoryIds.length
+    ? await prisma.categorias_comprobantes.findMany({
+        where: { id: { in: categoryIds.map((id) => BigInt(id)) } },
+        select: { id: true, descripcion: true, id_tipo: true },
+      })
+    : [];
+
+  const categoryMap = new Map(categories.map((c) => [c.id.toString(), c.descripcion]));
+  
+  return { groupByCat, categories, categoryMap };
+};
+
+const processTipos = async (groupByCat, categories, totalMes) => {
+  const totalsByTipoMap = new Map();
+  
+  for (const g of groupByCat) {
+    const catId = g.id_categoria;
+    if (!catId) continue;
+    
+    const cat = categories.find((c) => c.id.toString() === catId.toString());
+    const tipoId = cat?.id_tipo?.toString() || 'null';
+    const sum = Number(g._sum?.total ?? 0);
+    
+    totalsByTipoMap.set(tipoId, (totalsByTipoMap.get(tipoId) || 0) + sum);
+  }
+
+  const tipoIds = Array.from(totalsByTipoMap.keys()).filter((k) => k !== 'null');
+  const tipos = tipoIds.length
+    ? await prisma.tipos_comprobantes.findMany({
+        where: { id: { in: tipoIds.map((id) => BigInt(id)) } },
+        select: { id: true, descripcion: true },
+      })
+    : [];
+
+  const tipoMap = new Map(tipos.map((t) => [t.id.toString(), t.descripcion]));
+
+  return Array.from(totalsByTipoMap.entries()).map(([key, value]) => {
+    const total = Number(value);
+    const pct = totalMes === 0 ? 0 : Number(((total / totalMes) * 100).toFixed(2));
+    return {
+      id_tipo: key === 'null' ? null : key,
+      descripcion: key === 'null' ? null : tipoMap.get(key) || null,
+      total,
+      percentage: pct
+    };
+  });
+};
+
+// OBTENER LISTA DE COMPROBANTES (READ)
+// GET /comprobantes?page=1&limit=50&search=ABC&month=2025-02
+const getComprobantes = async (req, res) => {
+  try {
+    const { page = "1", limit = "50", search = "", month: monthParam = null } = req.query;
+
+    // Paginación
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Filtros y rangos de fechas
+    const baseFilter = buildSearchFilter(search);
+    const { year, month, monthRange, prevMonthRange, yearRange, prevYearRange } = getDateRanges(monthParam);
+    const whereList = { ...baseFilter, fecha: monthRange };
+
+    // Consultas principales en paralelo
+    const [comprobantes, totalAgg, totals] = await Promise.all([
+      prisma.comprobantes.findMany({
+        where: whereList,
+        skip,
+        take: limitNum,
+        orderBy: { created_at: "desc" },
+        include: { categorias_comprobantes: true, estados: true },
+      }),
+      prisma.comprobantes.aggregate({ where: whereList, _count: { _all: true } }),
+      Promise.all([
+        prisma.comprobantes.aggregate({ where: { ...baseFilter, fecha: monthRange }, _sum: { total: true } }),
+        prisma.comprobantes.aggregate({ where: { ...baseFilter, fecha: prevMonthRange }, _sum: { total: true } }),
+        prisma.comprobantes.aggregate({ where: { ...baseFilter, fecha: yearRange }, _sum: { total: true } }),
+        prisma.comprobantes.aggregate({ where: { ...baseFilter, fecha: prevYearRange }, _sum: { total: true } }),
+      ])
+    ]);
+
+    const [aggMes, aggPrevMes, aggAnio, aggPrevYear] = totals;
+    const total = Number(totalAgg?._count?._all ?? 0);
+    const totalMes = Number(aggMes?._sum?.total ?? 0);
+    const totalMesPrevio = Number(aggPrevMes?._sum?.total ?? 0);
+    const totalAnio = Number(aggAnio?._sum?.total ?? 0);
+    const totalYearPrev = Number(aggPrevYear?._sum?.total ?? 0);
+
+    // Procesar datos en paralelo
+    const [monthlyTotals, { groupByCat, categories, categoryMap }] = await Promise.all([
+      getMonthlyTotals(baseFilter, yearRange, search),
+      processCategories(baseFilter, monthRange)
+    ]);
+
+    const [totalsByTipo] = await Promise.all([
+      processTipos(groupByCat, categories, totalMes)
+    ]);
+
+    const totalsByCategory = groupByCat.map((g) => ({
+      id_categoria: g.id_categoria?.toString() || null,
+      descripcion: g.id_categoria ? categoryMap.get(g.id_categoria.toString()) || null : null,
+      total: Number(g._sum?.total ?? 0),
+      percentage: totalMes === 0 ? 0 : Number(((g._sum?.total ?? 0) / totalMes) * 100),
+    }));
+
+    res.json({
+      data: comprobantes,
+      statistics: {
+        totalRegistros: total,
+        totalMonth: totalMes,
+        totalMonthPrev: totalMesPrevio,
+        totalYear: totalAnio,
+        totalYearPrev: totalYearPrev,
+        diferenciaMensual: totalMes - totalMesPrevio,
+        diferenciaAnual: totalAnio - totalYearPrev,
+        porcentajeCambioMensual: Number(calculatePercentageChange(totalMes, totalMesPrevio).toFixed(2)),
+        porcentajeCambioAnual: Number(calculatePercentageChange(totalAnio, totalYearPrev).toFixed(2)),
+        categorias: totalsByCategory,
+        tipos: totalsByTipo,
+        totalsMonths: monthlyTotals,
+      },
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+      meta: {
+        month: `${year}-${String(month).padStart(2, "0")}`,
+        prevMonth: (() => {
+          const pm = new Date(prevMonthRange.gte);
+          return `${pm.getUTCFullYear()}-${String(pm.getUTCMonth() + 1).padStart(2, "0")}`;
+        })(),
+      },
+    });
+  } catch (error) {
+    console.error("Error obteniendo comprobantes:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
 };
 
 //  OBTENER COMPRA POR ID (READ)
