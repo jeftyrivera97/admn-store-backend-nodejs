@@ -2,12 +2,10 @@
 // CONTROLADOR DE PLANILLAS
 // Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar categorias/pedidos
 
+const prisma = require('../utils/prisma');
 //  Importaciones necesarias
-const { PrismaClient } = require('../generated/prisma');     // ORM para base de datos
 const { validationResult } = require('express-validator');   // Para manejar errores de validación
 
-//  Crear instancia de Prisma
-const prisma = new PrismaClient(); // ORM para base de datos
 
 // OBTENER LISTA DE PLANILLAS (READ)
 // GET /api/categorias/planillas - Con paginación y búsqueda

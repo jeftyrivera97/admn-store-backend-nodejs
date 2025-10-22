@@ -2,13 +2,12 @@
 // Contiene la lógica de negocio para registro y login de usuarios
 
 // 📦 Importaciones necesarias
+const prisma = require('../utils/prisma');
 const bcrypt = require('bcryptjs');                     // Para hashear passwords de forma segura
 const jwt = require('jsonwebtoken');                    // Para generar tokens de autenticación
-const { PrismaClient } = require('../generated/prisma'); // ORM para acceso a base de datos
 const { validationResult } = require('express-validator'); // Para manejar errores de validación
 
 // 🗄️ Crear instancia de Prisma para conectar con la base de datos
-const prisma = new PrismaClient();
 
 //  FUNCIÓN PARA GENERAR TOKEN JWT
 // Un token JWT permite autenticar al usuario sin mantener sesiones en el servidor

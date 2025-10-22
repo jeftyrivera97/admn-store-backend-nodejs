@@ -2,11 +2,9 @@
 // Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar planillas
 
 //  Importaciones necesarias
-const { PrismaClient } = require("../generated/prisma"); // ORM para base de datos
+const prisma = require('../utils/prisma');
 const { validationResult } = require("express-validator"); // Para manejar errores de validación
 
-//  Crear instancia de Prisma
-const prisma = new PrismaClient(); // ORM para base de datos
 
 // --- FUNCIONES AUXILIARES ---
 const buildSearchFilter = (search) => {
@@ -426,7 +424,7 @@ const createPlanilla = async (req, res) => {
         codigo_gasto: planilla.codigo_planilla, // Usar mismo código que la planilla
         fecha,
         descripcion: `Pago de planilla: ${planilla.descripcion}`,
-        id_categoria,
+        id_categoria: BigInt(34), // Asumir categoría "Salarios" con ID 3
         total,
         id_estado: BigInt(1),
         id_usuario: userId, // Estado activo por defecto (asumir que 1 = activo)
@@ -502,7 +500,7 @@ const updatePlanilla = async (req, res) => {
         codigo_gasto: planilla.codigo_planilla,
         fecha,
         descripcion: planilla.descripcion,
-        id_categoria,
+        id_categoria: BigInt(34),
         total,
         id_estado: BigInt(1),
         id_usuario: userId, // Estado activo por defecto (asumir que 1 = activo)

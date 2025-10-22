@@ -1,14 +1,14 @@
-// CONTROLADOR DE EMPLEADOS
-// Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar areas/pedidos
+// CONTROLADOR DE COMPROBANTES
+// Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar categorias/pedidos
 
 //  Importaciones necesarias
 const prisma = require('../utils/prisma');
 const { validationResult } = require('express-validator');   // Para manejar errores de validación
 
 
-// OBTENER LISTA DE EMPLEADOS (READ)
-// GET /api/areas/empleados - Con paginación y búsqueda
-const getAreasEmpleados = async (req, res) => {
+// OBTENER LISTA DE COMPROBANTES (READ)
+// GET /api/categorias/comprobantes - Con paginación y búsqueda
+const getCategoriasComprobantes = async (req, res) => {
   try {
     // 1.  Extraer parámetros de consulta con valores por defecto
     const {
@@ -23,7 +23,7 @@ const getAreasEmpleados = async (req, res) => {
 
     // 3.  Configurar filtros de búsqueda + solo mostrar activas (soft delete)
     const whereCondition = {
-      id_estado: BigInt(1),  // Solo mostrar areas activas (no eliminadas)
+      id_estado: BigInt(1),  // Solo mostrar categorias activas (no eliminadas)
       deleted_at: null,      // Solo registros NO eliminados (doble verificación)
       ...(search && {
         OR: [  // Buscar en cualquiera de estos campos
@@ -33,9 +33,9 @@ const getAreasEmpleados = async (req, res) => {
     };
 
     // 4.  Ejecutar consultas en paralelo para optimizar rendimiento
-    const [areas, total] = await Promise.all([
-      // Obtener areas con paginación y filtros
-      prisma.areas_empleados.findMany({
+    const [categorias, total] = await Promise.all([
+      // Obtener categorias con paginación y filtros
+      prisma.categorias_comprobantes.findMany({
         where: whereCondition,
         skip: parseInt(skip),           // Saltar registros para paginación
         take: parseInt(limit),          // Limitar cantidad de resultados
@@ -46,14 +46,14 @@ const getAreasEmpleados = async (req, res) => {
       }),
 
       // Contar total de registros que coinciden con los filtros
-      prisma.areas_empleados.count({ where: whereCondition })
+      prisma.categorias_comprobantes.count({ where: whereCondition })
     ]);
 
 
 
     // 5. Enviar respuesta con datos (el middleware se encarga de la serialización)
     res.json({
-      data: areas,  // Array de areas - el middleware convertirá automáticamente BigInt y Date
+      data: categorias,  // Array de categorias - el middleware convertirá automáticamente BigInt y Date
       pagination: {
         page: parseInt(page),           // Página actual
         limit: parseInt(limit),         // Elementos por página
@@ -64,22 +64,22 @@ const getAreasEmpleados = async (req, res) => {
 
   } catch (error) {
     //  Manejar errores
-    console.error('Error obteniendo areas:', error);
+    console.error('Error obteniendo categorias:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
 //  OBTENER CATEGORIA POR ID (READ)
-// GET /api/areas/empleados/:id
-const getAreaEmpleadoById = async (req, res) => {
+// GET /api/categorias/comprobantes/:id
+const getCategoriaComprobanteById = async (req, res) => {
   try {
-    // 1.  Obtener ID de la area desde los parámetros de la URL
+    // 1.  Obtener ID de la categoria desde los parámetros de la URL
     const { id } = req.params;
 
-    console.log(' Buscando area con ID:', id);
+    console.log(' Buscando categoria con ID:', id);
 
-    // 2. Buscar area específica en la base de datos (solo activas)
-    const area = await prisma.areas_empleados.findUnique({
+    // 2. Buscar categoria específica en la base de datos (solo activas)
+    const categoria = await prisma.categorias_comprobantes.findUnique({
       where: { 
         id: BigInt(id)
       },
@@ -88,24 +88,24 @@ const getAreaEmpleadoById = async (req, res) => {
       }
     });
 
-    // 3. Verificar si la area existe
-    if (!area) {
+    // 3. Verificar si la categoria existe
+    if (!categoria) {
       return res.status(404).json({
         success: false,
-        message: ' Area no encontrada'
+        message: ' Categoria no encontrada'
       });
     }
 
-    // 4.  Enviar respuesta exitosa con los datos de la area
+    // 4.  Enviar respuesta exitosa con los datos de la categoria
     res.json({
       success: true,
-      message: ' Empleado encontrada',
-      data: area
+      message: ' Comprobante encontrada',
+      data: categoria
     });
 
   } catch (error) {
     //  Manejar errores (incluye error P2025 si el ID no existe)
-    console.error(' Error obteniendo area:', error);
+    console.error(' Error obteniendo categoria:', error);
     res.status(500).json({
       success: false,
       message: ' Error interno del servidor'
@@ -119,6 +119,6 @@ const getAreaEmpleadoById = async (req, res) => {
 
 //  Exportar todas las funciones para usar en las rutas
 module.exports = {
-  getAreasEmpleados,    // GET /api/areas/empleados
-  getAreaEmpleadoById,  // GET /api/areas/empleados/:id
+  getCategoriasComprobantes,    // GET /api/categorias/comprobantes
+  getCategoriaComprobanteById,  // GET /api/categorias/comprobantes/:id
 };

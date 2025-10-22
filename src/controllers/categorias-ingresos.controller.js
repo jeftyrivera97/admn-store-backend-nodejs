@@ -2,11 +2,9 @@
 // Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar categorias/pedidos
 
 //  Importaciones necesarias
-const { PrismaClient } = require('../generated/prisma');     // ORM para base de datos
+const prisma = require('../utils/prisma');
 const { validationResult } = require('express-validator');   // Para manejar errores de validación
 
-//  Crear instancia de Prisma
-const prisma = new PrismaClient(); // ORM para base de datos
 
 // OBTENER LISTA DE INGRESOS (READ)
 // GET /api/categorias/ingresos - Con paginación y búsqueda

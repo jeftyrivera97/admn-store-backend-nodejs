@@ -1,5 +1,5 @@
-# Usar Node.js 18 LTS como imagen base
-FROM node:18-alpine
+# Usar Node.js 20 LTS como imagen base (más reciente y estable)
+FROM node:20-alpine
 
 # Instalar dependencias del sistema necesarias
 RUN apk add --no-cache openssl

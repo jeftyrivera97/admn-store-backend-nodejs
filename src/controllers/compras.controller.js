@@ -2,11 +2,8 @@
 // Contiene la lógica CRUD (Create, Read, Update, Delete) para gestionar compras/pedidos
 
 //  Importaciones necesarias
-const { PrismaClient } = require("../generated/prisma"); // ORM para base de datos
+const prisma = require('../utils/prisma'); // Instancia singleton de Prisma
 const { validationResult } = require("express-validator"); // Para manejar errores de validación
-
-//  Crear instancia de Prisma
-const prisma = new PrismaClient(); // ORM para base de datos
 
 // --- FUNCIONES AUXILIARES ---
 const buildSearchFilter = (search) => {
@@ -397,6 +394,7 @@ const createCompra = async (req, res) => {
     const {
       codigo_compra,
       fecha,
+      descripcion,
       id_categoria,
       id_proveedor,
       id_tipo_operacion,
@@ -409,6 +407,8 @@ const createCompra = async (req, res) => {
       exonerado,
       total,
     } = req.body;
+
+    console.log("Datos que vienen del front end:", req.body);
 
     // 3.  Obtener ID del usuario autenticado desde el token JWT
     // req.user fue establecido por authMiddleware
@@ -448,12 +448,14 @@ const createCompra = async (req, res) => {
     // Determinar estado de operación en BigInt
     const id_estado_operacion = id_tipo_operacionBI === 1n ? 1n : 2n;
 
+    const dscr = descripcion ? descripcion : "Compra de Productos";
+
     // 4. Crear compra en la base de datos
     const compra = await prisma.compras.create({
       data: {
         codigo_compra,
         fecha: fecha,
-        descripcion: descripcion || "Compra de Productos",
+        descripcion: dscr,
         id_categoria: id_categoriaBI,
         id_proveedor: id_proveedorBI,
         id_tipo_operacion: id_tipo_operacionBI,

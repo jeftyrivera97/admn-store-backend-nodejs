@@ -27,6 +27,7 @@ const categoriasIngresosRoutes = require('./routes/categorias-ingresos.routes');
 const categoriasPlanillasRoutes = require('./routes/categorias-planillas.routes');// Rutas de categorias planillas (/api/categorias/planillas)
 const categoriasEmpleadosRoutes = require('./routes/categorias-empleados.routes');// Rutas de categorias empleados (/api/categorias/empleados)  
 const areasEmpleadosRoutes = require('./routes/areas-empleados.routes');// Rutas de areas empleados (/api/areasEmpleados)
+const categoriasComprobantesRoutes = require('./routes/categorias-comprobantes.routes');// Rutas de categorias comprobantes (/api/categorias/comprobantes)
 
 
 
@@ -73,8 +74,10 @@ app.use(cors({
 // 🚦 LIMITADOR DE PETICIONES (Rate Limiting)
 // Previene ataques de fuerza bruta y spam
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos en milisegundos
-  max: 100                   // Máximo 100 peticiones por IP cada 15 minutos
+  windowMs: 15 * 60 * 1000,      // 15 minutos en milisegundos
+  max: 300,                       // Máximo 300 peticiones por IP cada 15 minutos
+  skipSuccessfulRequests: true,   // No contar peticiones exitosas (200-299) hacia el límite
+  message: 'Too many requests, please try again later.'
   // Si se supera el límite, responde con error 429 (Too Many Requests)
 });
 app.use(limiter);
@@ -129,6 +132,8 @@ app.use('/api/categorias', categoriasGastosRoutes);
 app.use('/api/categorias', categoriasIngresosRoutes);
 app.use('/api/categorias', categoriasPlanillasRoutes);
 app.use('/api/categorias', categoriasEmpleadosRoutes);
+app.use('/api/categorias', categoriasComprobantesRoutes);
+
 app.use('/api/areas', areasEmpleadosRoutes);
 
 //  MANEJO DE RUTAS NO ENCONTRADAS (404)

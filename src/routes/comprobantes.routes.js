@@ -25,7 +25,7 @@ const comprobanteValidation = [
         .withMessage('Código de comprobante es requerido'),
 
     // Fecha es obligatoria
-    body('fecha_apertura')
+    body('fecha')
         .notEmpty()
         .withMessage('Fecha es requerida'),
 
@@ -33,11 +33,6 @@ const comprobanteValidation = [
     body('total')
         .notEmpty()
         .withMessage('Total es requerido'),
-
-    // Proveedor es obligatorio
-    body('total_contado')
-        .notEmpty()
-        .withMessage('Total contado es requerido'),
 
 ];
 
