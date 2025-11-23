@@ -227,11 +227,24 @@ const getPlanillas = async (req, res) => {
     const whereList = { ...baseFilter, fecha: monthRange };
 
     // Consultas principales en paralelo
-    const [planillas, totalAgg, totals] = await Promise.all([
+    const [planillas, allPlanillasDelMes, totalAgg, totals] = await Promise.all([
+      // Planillas paginadas
       prisma.planillas.findMany({
         where: whereList,
         skip,
         take: limitNum,
+        orderBy: { created_at: "desc" },
+        include: {
+          categorias_planillas: true,
+          estados: true,
+          users: true,
+          empleados: true,
+          gasto_planillas: true,
+        },
+      }),
+      // TODAS las planillas del mes sin paginación
+      prisma.planillas.findMany({
+        where: whereList,
         orderBy: { created_at: "desc" },
         include: {
           categorias_planillas: true,
@@ -292,6 +305,7 @@ const getPlanillas = async (req, res) => {
 
     res.json({
       data: planillas,
+      allMonthData: allPlanillasDelMes, // TODAS las planillas del mes sin paginación
       statistics: {
         totalRegistros: total,
         totalMonth: totalMes,

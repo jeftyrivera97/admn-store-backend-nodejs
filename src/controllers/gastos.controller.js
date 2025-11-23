@@ -194,11 +194,18 @@ const getGastos = async (req, res) => {
     const whereList = { ...baseFilter, fecha: monthRange };
 
     // Consultas principales en paralelo
-    const [gastos, totalAgg, totals] = await Promise.all([
+    const [gastos, allGastosDelMes, totalAgg, totals] = await Promise.all([
+      // Gastos paginados
       prisma.gastos.findMany({
         where: whereList,
         skip,
         take: limitNum,
+        orderBy: { created_at: "desc" },
+        include: { categorias_gastos: true, estados: true, users: true },
+      }),
+      // TODOS los gastos del mes sin paginación
+      prisma.gastos.findMany({
+        where: whereList,
         orderBy: { created_at: "desc" },
         include: { categorias_gastos: true, estados: true, users: true },
       }),
@@ -237,6 +244,7 @@ const getGastos = async (req, res) => {
 
     res.json({
       data: gastos,
+      allMonthData: allGastosDelMes, // TODOS los gastos del mes sin paginación
       statistics: {
         totalRegistros: total,
         totalMonth: totalMes,

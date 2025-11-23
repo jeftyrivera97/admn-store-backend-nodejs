@@ -155,11 +155,23 @@ const getVentas = async (req, res) => {
     const whereList = { ...baseFilter, fecha: monthRange };
 
     // Consultas principales en paralelo
-    const [ventas, totalAgg, totals] = await Promise.all([
+    const [ventas, allVentasDelMes, totalAgg, totals] = await Promise.all([
+      // Ventas paginadas
       prisma.ventas.findMany({
         where: whereList,
         skip,
         take: limitNum,
+        orderBy: { created_at: "desc" },
+        include: {
+          comprobantes: true,
+          estados: true,
+          cajas_movimientos: true,
+          users: true,
+        },
+      }),
+      // TODAS las ventas del mes sin paginación
+      prisma.ventas.findMany({
+        where: whereList,
         orderBy: { created_at: "desc" },
         include: {
           comprobantes: true,
@@ -207,6 +219,7 @@ const getVentas = async (req, res) => {
 
     res.json({
       data: ventas,
+      allMonthData: allVentasDelMes, // TODAS las ventas del mes sin paginación
       statistics: {
         totalRegistros: total,
         totalMonth: totalMes,

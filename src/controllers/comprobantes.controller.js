@@ -227,11 +227,29 @@ const getComprobantes = async (req, res) => {
     const whereList = { ...baseFilter, fecha: monthRange };
 
     // Consultas principales en paralelo
-    const [comprobantes, totalAgg, totals] = await Promise.all([
+    const [comprobantes, allComprobantesDelMes, totalAgg, totals] = await Promise.all([
+      // Comprobantes paginados
       prisma.comprobantes.findMany({
         where: whereList,
         skip,
         take: limitNum,
+        orderBy: { created_at: "desc" },
+        include: {
+          categorias_comprobantes: true,
+          estados: true,
+          ventas: true,
+          clientes: true,
+          comprobantes_detalles: true,
+          comprobantes_folios: true,
+          tipos_operaciones: true,
+          estados_comprobantes: true,
+          comprobantes_pagos: true,
+          users: true,
+        },
+      }),
+      // TODOS los comprobantes del mes sin paginación
+      prisma.comprobantes.findMany({
+        where: whereList,
         orderBy: { created_at: "desc" },
         include: {
           categorias_comprobantes: true,
@@ -300,6 +318,7 @@ const getComprobantes = async (req, res) => {
 
     res.json({
       data: comprobantes,
+      allMonthData: allComprobantesDelMes, // TODOS los comprobantes del mes sin paginación
       statistics: {
         totalRegistros: total,
         totalMonth: totalMes,

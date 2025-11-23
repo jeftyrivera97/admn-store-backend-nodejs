@@ -194,13 +194,20 @@ const getIngresos = async (req, res) => {
     const whereList = { ...baseFilter, fecha: monthRange };
 
     // Consultas principales en paralelo
-    const [ingresos, totalAgg, totals] = await Promise.all([
+    const [ingresos, allIngresosDelMes, totalAgg, totals] = await Promise.all([
+      // Ingresos paginados
       prisma.ingresos.findMany({
         where: whereList,
         skip,
         take: limitNum,
         orderBy: { created_at: "desc" },
-        include: { categorias_ingresos: true, estados: true },
+        include: { categorias_ingresos: true, estados: true, users: true },
+      }),
+      // TODOS los ingresos del mes sin paginación
+      prisma.ingresos.findMany({
+        where: whereList,
+        orderBy: { created_at: "desc" },
+        include: { categorias_ingresos: true, estados: true, users: true },
       }),
       prisma.ingresos.aggregate({ where: whereList, _count: { _all: true } }),
       Promise.all([
@@ -237,6 +244,7 @@ const getIngresos = async (req, res) => {
 
     res.json({
       data: ingresos,
+      allMonthData: allIngresosDelMes, // TODOS los ingresos del mes sin paginación
       statistics: {
         totalRegistros: total,
         totalMonth: totalMes,
