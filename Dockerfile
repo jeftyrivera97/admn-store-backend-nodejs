@@ -10,27 +10,32 @@ WORKDIR /app
 # Copiar package.json y package-lock.json
 COPY package*.json ./
 
-# Instalar todas las dependencias (incluidas dev para Prisma)
-RUN npm ci
+# Instalar solo dependencias de producción
+RUN npm ci --only=production
+
+# Copiar Prisma schema primero
+COPY prisma ./prisma
+
+# Generar cliente Prisma (necesario antes de copiar el código)
+RUN npx prisma generate
 
 # Copiar el resto del código
 COPY . .
 
-# Generar cliente Prisma
-RUN npx prisma generate
-
-# Eliminar dependencias de desarrollo para reducir tamaño
-RUN npm prune --production
-
 # Crear usuario no-root para seguridad
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
 
-# Cambiar propiedad de archivos al usuario nodejs
+# Cambiar a usuario no-root
 USER nodejs
 
 # Exponer puerto 3001
 EXPOSE 3001
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
 # Comando para iniciar la aplicación
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
